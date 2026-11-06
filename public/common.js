@@ -24,7 +24,7 @@
 
   /** `n` bougies allumées sur `max`. */
   function candles(n, max) {
-    let h = '<span class="candles" role="img" aria-label="' + n + ' sur ' + max + ' de Raison">';
+    let h = '<span class="candles" role="img" aria-label="' + esc(g.I18N.t('candlesAria', { n, m: max })) + '">';
     for (let i = 0; i < max; i++) h += candle(i < n, i);
     return h + '</span>';
   }
@@ -35,4 +35,30 @@
   };
 
   g.UI = { esc, candle, candles, mmss };
+
+  // ---- Langue (textes servis par /ui.js : window.UI_TEXT = { fr: {...}, aeb: {...} }, window.UI_META)
+  let cur = 'fr';
+  const dict = (code) => (g.UI_TEXT && g.UI_TEXT[code]) || {};
+  const fill = (str, vars) => String(str).replace(/\{(\w+)\}/g, (m, k) => (vars && vars[k] !== undefined ? vars[k] : ''));
+  g.I18N = {
+    get lang() { return cur; },
+    set(code) {
+      const meta = (g.UI_META && g.UI_META[code]) || { dir: 'ltr', htmlLang: 'fr' };
+      cur = g.UI_TEXT && g.UI_TEXT[code] ? code : 'fr';
+      const root = document.documentElement;
+      if (root.lang !== meta.htmlLang) root.lang = meta.htmlLang;
+      if (root.dir !== meta.dir) root.dir = meta.dir;
+      document.body.classList.toggle('rtl', meta.dir === 'rtl');
+    },
+    t(key, vars) {
+      const d = dict(cur);
+      return fill(d[key] != null ? d[key] : dict('fr')[key] != null ? dict('fr')[key] : key, vars);
+    },
+    in(code, key, vars) {
+      return fill(dict(code)[key] != null ? dict(code)[key] : key, vars);
+    },
+    both(key) {
+      return fill(dict('fr')[key] || key) + '  /  ' + fill(dict('aeb')[key] || key);
+    },
+  };
 })(window);

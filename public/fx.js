@@ -129,14 +129,22 @@
     hbTimer = setInterval(beat, 60000 / bpm);
   }
 
+  let speech = 'fr-FR';
+  function setLang(code) {
+    speech = code || 'fr-FR';
+  }
+
   function say(text) {
     if (!voiceOn || !enabled || !text || !('speechSynthesis' in window)) return;
     speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'fr-FR';
+    const base = speech.slice(0, 2).toLowerCase();
+    const voices = speechSynthesis.getVoices();
+    // arabe : on cherche d'abord ar-TN, sinon n'importe quelle voix arabe (le tunisien est rarement installé)
+    const v = voices.find((x) => x.lang.replace('_', '-').toLowerCase() === speech.toLowerCase()) || voices.find((x) => x.lang.toLowerCase().startsWith(base));
+    u.lang = v ? v.lang : speech;
     u.rate = 0.82;
     u.pitch = 0.5;
-    const v = speechSynthesis.getVoices().find((x) => /^fr/i.test(x.lang));
     if (v) u.voice = v;
     speechSynthesis.speak(u);
   }
@@ -161,6 +169,7 @@
     cue,
     heart,
     say,
+    setLang,
     isEnabled: () => enabled,
     toggleVoice: () => {
       voiceOn = !voiceOn;

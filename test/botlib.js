@@ -62,7 +62,7 @@ class Bot {
       const m = JSON.parse(raw);
       if (m.t === 'joined') {
         this.pid = m.pid;
-        this.content = m.content;
+        this.content = m.content.fr; // la structure (cibles des objets…) est identique dans toutes les langues
         this.onJoined(m);
       } else if (m.t === 'error') this.stats.errors.push(m);
       else if (m.t === 'state') {

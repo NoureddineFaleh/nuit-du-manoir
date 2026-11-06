@@ -5,6 +5,7 @@
 const C = require('./content');
 const U = require('./util');
 const CH = require('./challenges');
+const { pack, DEFAULT, LANGS } = require('./lang');
 
 const { CFG } = C;
 const PALETTE = ['#c0392b', '#d4a017', '#3498c8', '#9b59b6', '#2ecc8f'];
@@ -15,8 +16,22 @@ class Game {
     this.scale = opts.scale || 1;
     this.onChange = opts.onChange || (() => {});
     this.target = 5;
+    this.lang = opts.lang && LANGS[opts.lang] ? opts.lang : DEFAULT;
     this.players = [];
     this.resetState();
+  }
+
+  get L() {
+    return pack(this.lang);
+  }
+
+  /** Langue de la partie (modifiable uniquement au salon). */
+  setLang(code) {
+    if (this.phase !== 'lobby' || !LANGS[code] || code === this.lang) return false;
+    this.lang = code;
+    this.narr = { id: (this.narr ? this.narr.id : 0) + 1, text: '' };
+    this.changed();
+    return true;
   }
 
   // -------------------------------------------------------------------------
@@ -44,7 +59,7 @@ class Game {
     return (conn.length ? conn : alive).map((p) => p.id);
   }
   say(key) {
-    this.sayText(U.pick(C.NARR[key]));
+    this.sayText(U.pick(this.L.NARR[key]));
   }
   sayText(text) {
     this.narr = { id: (this.narr ? this.narr.id : 0) + 1, text };
@@ -119,7 +134,7 @@ class Game {
       .replace(/\s+/g, ' ')
       .trim()
       .slice(0, 14);
-    return n || 'Invité';
+    return n || this.L.T.guest;
   }
 
   addPlayer(name, token) {
@@ -293,7 +308,7 @@ class Game {
     this.lastAct = this.act;
 
     const ev = this.night > 1 ? this.nextEvent : null;
-    this.event = ev ? { id: ev, ...C.EVENTS[ev] } : null;
+    this.event = ev ? { id: ev, ...this.L.EVENTS[ev] } : null;
     this.nextEvent = null;
 
     this.actions = {};
@@ -336,7 +351,7 @@ class Game {
     this.lastType = type;
     this.challenge = CH.create(type, {
       now: this.now(), act: this.act, scale: this.scale, S: (s) => this.S(s),
-      usedQ: this.usedQ, usedP: this.usedP,
+      usedQ: this.usedQ, usedP: this.usedP, L: this.L,
     });
     this.startPhase('crepuscule', 0, 'crepuscule');
     this.phaseEndsAt = this.challenge.endsAt;
@@ -459,11 +474,11 @@ class Game {
         const key = [p.id, t.id].sort().join('|');
         if (done.has(key)) continue;
         done.add(key);
-        this.note(p.id, 'echo', `Un écho répond… ${t.name} est ton Lié.`);
-        this.note(t.id, 'echo', `Un écho répond… ${p.name} est ton Lié.`);
+        this.note(p.id, 'echo', this.L.T.echo(t.name));
+        this.note(t.id, 'echo', this.L.T.echo(p.name));
       } else {
-        this.note(p.id, 'murmure', "Aucun écho ne répond. Ta cible n'est pas des tiens.");
-        this.note(t.id, 'murmure', 'Une voix glaciale souffle dans ton cou : « Es-tu des nôtres ? » Tu ne sais pas qui a parlé.');
+        this.note(p.id, 'murmure', this.L.T.noEcho);
+        this.note(t.id, 'murmure', this.L.T.coldVoice);
       }
     }
   }
@@ -490,7 +505,7 @@ class Game {
     }
     if (this.curse === 'etouffer' && uses.length) {
       const [u] = uses.splice(U.rnd(uses.length), 1);
-      this.note(u.pid, 'objet', `Une force invisible a étouffé ton objet (${C.ITEMS[u.item].name}). Il est perdu.`);
+      this.note(u.pid, 'objet', this.L.T.stifled(this.L.ITEMS[u.item].name));
     }
 
     this.resolveMurmurs();
@@ -499,17 +514,17 @@ class Game {
     for (const u of uses) {
       if (u.item === 'lanterne') {
         this.shield[u.pid] = (this.shield[u.pid] || 0) + 1;
-        this.note(u.pid, 'objet', 'Ta lanterne brûle : la prochaine perte de Raison de la nuit sera annulée.');
+        this.note(u.pid, 'objet', this.L.T.lantern);
       } else if (u.item === 'sel') {
         this.trap.add(u.pid);
-        this.note(u.pid, 'objet', 'Tu traces un cercle de sel : toute attaque contre toi sera renvoyée à son auteur.');
+        this.note(u.pid, 'objet', this.L.T.salt);
       } else if (u.item === 'couteau') {
         attacks.push({ from: u.pid, to: u.target });
       } else if (u.item === 'miroir') {
         const t = this.byId(u.target);
         let shown = t.role === 'lie';
         if (this.hallu.has(u.pid) && Math.random() < CFG.MIRROR_FALSE) shown = !shown;
-        this.note(u.pid, 'miroir', `Dans le miroir, ${t.name} apparaît comme ${shown ? 'un Lié' : 'un Solitaire'}.`);
+        this.note(u.pid, 'miroir', this.L.T.mirror(t.name, shown));
       }
     }
     const mk = this.marker && this.byId(this.marker);
@@ -520,8 +535,8 @@ class Game {
       this.attackedTonight.add(atk.to);
       if (this.trap.has(atk.to)) {
         this.pendingDamage.push({ pid: atk.from });
-        this.note(atk.to, 'objet', 'Le sel crépite : quelqu’un a tenté de te toucher. Le coup est retourné contre lui.');
-        this.note(atk.from, 'objet', 'Ton coup se retourne contre toi : ta cible était protégée par du sel.');
+        this.note(atk.to, 'objet', this.L.T.saltHit);
+        this.note(atk.from, 'objet', this.L.T.saltBack);
       } else {
         this.pendingDamage.push({ pid: atk.to });
       }
@@ -534,7 +549,7 @@ class Game {
         const it = U.pick(Object.keys(C.ITEMS));
         p.items.push(it);
         this.pendingDamage.push({ pid: p.id, unblockable: true });
-        this.note(p.id, 'objet', `La Chose accepte ton offrande : tu reçois ${C.ITEMS[it].icon} ${C.ITEMS[it].name}. Tu perdras 1 Raison à l'aube.`);
+        this.note(p.id, 'objet', this.L.T.pacte(C.ITEMS[it].icon, this.L.ITEMS[it].name));
       }
     }
 
@@ -546,17 +561,18 @@ class Game {
   // -------------------------------------------------------------------------
   fakeVoice(pid) {
     const others = this.alive().filter((p) => p.id !== pid);
-    const x = others.length ? U.pick(others).name : 'quelqu’un';
-    return U.pick(C.HALLU)(x);
+    const x = others.length ? U.pick(others).name : this.L.T.someone;
+    return U.pick(this.L.HALLU)(x);
   }
 
   deliverMurmurs() {
     const alive = this.alive();
+    const M = this.L.T.murmurs;
     const TPL = [
-      (x) => ({ pos: `${x.name} est un Lié.`, neg: `${x.name} n'est pas un Lié.`, truth: x.role === 'lie' }),
-      (x) => ({ pos: `${x.name} cache encore un objet.`, neg: `${x.name} n'a plus aucun objet.`, truth: x.items.length > 0 }),
-      (x) => ({ pos: `${x.name} a utilisé un objet cette nuit.`, neg: `${x.name} n'a rien utilisé cette nuit.`, truth: this.usedTonight.has(x.id) }),
-      (x) => ({ pos: `${x.name} a été visé cette nuit.`, neg: `Personne n'a visé ${x.name} cette nuit.`, truth: this.attackedTonight.has(x.id) }),
+      (x) => ({ ...M[0](x.name), truth: x.role === 'lie' }),
+      (x) => ({ ...M[1](x.name), truth: x.items.length > 0 }),
+      (x) => ({ ...M[2](x.name), truth: this.usedTonight.has(x.id) }),
+      (x) => ({ ...M[3](x.name), truth: this.attackedTonight.has(x.id) }),
     ];
     const weights = [0, 1, 1, 2, 2, 3, 3];
     for (const p of alive) {
@@ -565,7 +581,7 @@ class Game {
       const tpl = TPL[U.pick(weights)](U.pick(others));
       const honest = Math.random() < CFG.MURMUR_TRUE;
       const claim = honest ? tpl.truth : !tpl.truth;
-      this.note(p.id, 'voix', `Un murmure traverse les murs : « ${claim ? tpl.pos : tpl.neg} »`);
+      this.note(p.id, 'voix', this.L.T.murmurWrap(claim ? tpl.pos : tpl.neg));
     }
   }
 
@@ -629,7 +645,7 @@ class Game {
     }
     if (this.auto) {
       this.startPhase('rituel', CFG.SECS.duelAuto, null);
-      this.sayText('Le duel est décisif. Il ne reste qu’une proie pour la Chose.');
+      this.sayText(this.L.T.duel);
     } else {
       this.startPhase('rituel', CFG.SECS.rituel, 'rituel');
     }
@@ -657,10 +673,10 @@ class Game {
     else if (max > 0) {
       const top = Object.keys(tally).filter((k) => tally[k] === max);
       designated = U.pick(top);
-      if (top.length > 1) this.tieNote = 'Égalité : la Chose tranche.';
+      if (top.length > 1) this.tieNote = this.L.T.tie;
     } else {
       designated = U.pick(this.eligible);
-      this.tieNote = 'Personne n’a voté : la Chose choisit.';
+      this.tieNote = this.L.T.noVote;
     }
     this.voteHidden = !!((this.event && this.event.id === 'brouillard') || this.curse === 'tenebres');
     this.voteDetail = this.voteHidden
@@ -694,7 +710,7 @@ class Game {
     const d0 = this.byId(this.designated);
     lines.push({
       kind: 'rituel',
-      text: `Le Rituel désigne ${d0.name}.${this.tieNote ? ' ' + this.tieNote : ''}`,
+      text: this.L.T.ritual(d0.name, this.tieNote),
     });
 
     const hit = (p, d) => {
@@ -721,33 +737,29 @@ class Game {
     if (blocked) {
       lines.push({
         kind: 'lantern',
-        text: blocked === 1
-          ? "Une flamme a vacillé dans l'ombre… et la lumière a repoussé les ténèbres."
-          : 'Des flammes ont vacillé dans l’ombre… la lumière a repoussé les ténèbres.',
+        text: blocked === 1 ? this.L.T.lantern1 : this.L.T.lanternN,
       });
     }
     for (const p of this.players) {
       if (!loss[p.id]) continue;
       lines.push({
         kind: 'loss', pid: p.id,
-        text: lethal.has(p.id)
-          ? `${p.name} est frappé de plein fouet : toute sa Raison s'envole.`
-          : `${p.name} perd ${loss[p.id]} Raison.`,
+        text: lethal.has(p.id) ? this.L.T.lossLethal(p.name) : this.L.T.loss(p.name, loss[p.id]),
       });
     }
     for (const id of died) {
       const p = this.byId(id);
-      lines.push({ kind: 'death', pid: id, text: `${p.name} bascule dans la folie. ${p.name} devient un Hanté.` });
+      lines.push({ kind: 'death', pid: id, text: this.L.T.death(p.name) });
     }
-    if (fatal) lines.push({ kind: 'fatal', text: "L'aube est funeste : le manoir réclame son dû, et chacun y laisse un peu de sa raison." });
-    if (!Object.keys(loss).length && !blocked) lines.push({ kind: 'calm', text: "Cette nuit, personne n'a perdu la raison." });
+    if (fatal) lines.push({ kind: 'fatal', text: this.L.T.fatal });
+    if (!Object.keys(loss).length && !blocked) lines.push({ kind: 'calm', text: this.L.T.calm });
 
     this.winner = this.checkWinner();
     if (!this.winner) {
       const nextAct = this.actFor(this.night + 1, this.alive().length);
       const ev = U.pick(C.EVENTS_BY_ACT[nextAct]);
       this.nextEvent = ev;
-      lines.push({ kind: 'event', text: `Pour la nuit prochaine, la Chose prépare : ${C.EVENTS[ev].name}. ${C.EVENTS[ev].text}` });
+      lines.push({ kind: 'event', text: this.L.T.nextEvent(this.L.EVENTS[ev].name, this.L.EVENTS[ev].text) });
     }
 
     const cue = died.length ? 'death' : Object.keys(loss).length ? 'hit' : 'bell';
@@ -797,7 +809,7 @@ class Game {
   //  Vues
   // -------------------------------------------------------------------------
   actInfo() {
-    return { act: this.act, actName: C.ACTS[this.act].name, actRoman: C.ACTS[this.act].roman };
+    return { act: this.act, actName: this.L.ACTS[this.act].name, actRoman: this.L.ACTS[this.act].roman };
   }
 
   publicPlayers() {
@@ -813,11 +825,11 @@ class Game {
     let names_ = [];
     if (w.type === 'lies') {
       names_ = names(this.players.filter((p) => p.role === 'lie'));
-      title = 'Les Liés triomphent';
+      title = this.L.T.endLies;
     } else if (w.type === 'solitaire') {
       names_ = [this.byId(w.pid).name];
-      title = `${names_[0]} survit seul`;
-    } else title = 'La Chose gagne : personne ne sort vivant';
+      title = this.L.T.endSolo(names_[0]);
+    } else title = this.L.T.endChose;
     return {
       type: w.type, title, winners: names_, winnerIds: w.type === 'lies' ? this.players.filter((p) => p.role === 'lie').map((p) => p.id) : w.pid ? [w.pid] : [],
       roles: this.players.map((p) => ({ id: p.id, name: p.name, color: p.color, role: p.role, alive: p.alive, raison: p.raison })),
@@ -835,7 +847,7 @@ class Game {
       connected: p.connected, done: p.done, crown: p.id === this.marker,
     }));
     const v = {
-      t: 'screen', now: t, phase: this.phase, night: this.night, ...this.actInfo(),
+      t: 'screen', now: t, lang: this.lang, phase: this.phase, night: this.night, ...this.actInfo(),
       endsAt: this.phaseEndsAt, target: this.target, players, narr: this.narr,
       banner: this.banner, event: this.eventPub(), canStart: this.canStart(),
     };
@@ -873,12 +885,12 @@ class Game {
           coupure: !!(this.event && this.event.id === 'coupure'),
           startedAt: this.veilleeStart,
           coupureMs: this.S(CFG.SECS.coupure),
-          curse: this.curse ? { id: this.curse, name: C.CURSES[this.curse].name, text: C.CURSES[this.curse].pub } : null,
+          curse: this.curse ? { id: this.curse, name: this.L.CURSES[this.curse].name, text: this.L.CURSES[this.curse].pub } : null,
           rune: this.revealedRune,
           ready: { done: this.players.filter((p) => p.alive && p.done).length, total: this.players.filter((p) => p.alive).length },
           gestures: silence
             ? Object.entries(this.gestures).map(([id, g]) => ({
-                id, name: nameOf(id), icon: C.GESTURES[g.g].icon, label: C.GESTURES[g.g].label,
+                id, name: nameOf(id), icon: C.GESTURES[g.g].icon, label: this.L.GESTURES[g.g].label,
                 target: g.target ? nameOf(g.target) : null, at: g.at,
               }))
             : [],
@@ -917,7 +929,7 @@ class Game {
       hallu: p.alive && this.phase !== 'lobby' && p.raison === 1,
     };
     const v = {
-      t: 'state', phase: this.phase, night: this.night, ...this.actInfo(), endsAt: this.phaseEndsAt,
+      t: 'state', lang: this.lang, phase: this.phase, night: this.night, ...this.actInfo(), endsAt: this.phaseEndsAt,
       target: this.target, me, players: this.publicPlayers(),
       event: this.eventPub(), log: this.logs[pid] || [],
     };
@@ -949,7 +961,7 @@ class Game {
         v.veillee = {
           silence: !!(this.event && this.event.id === 'silence'),
           rune: p.alive ? this.runes[pid] || null : null,
-          curse: this.curse ? { id: this.curse, name: C.CURSES[this.curse].name } : null,
+          curse: this.curse ? { id: this.curse, name: this.L.CURSES[this.curse].name } : null,
         };
         break;
       }

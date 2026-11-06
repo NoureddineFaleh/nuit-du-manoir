@@ -2,6 +2,8 @@
 (() => {
   'use strict';
   const { esc, candles } = window.UI;
+  const tr = (k, v) => window.I18N.t(k, v);
+  const both = (k) => window.I18N.both(k);
   const $ = (s, r = document) => r.querySelector(s);
   const main = $('#main');
   const hdr = $('#hdr');
@@ -19,6 +21,7 @@
   let ws = null;
   let S = null;
   let content = null;
+  let allContent = null;
   let offset = 0;
   let joined = false;
   let wantJoin = false;
@@ -63,7 +66,7 @@
   function onMsg(m) {
     if (m.t === 'joined') {
       joined = true;
-      content = m.content;
+      allContent = m.content;
       keepAwake();
     } else if (m.t === 'error') {
       if (m.code === 'kicked') {
@@ -82,7 +85,21 @@
     } else if (m.t === 'state') {
       offset = m.now - Date.now();
       S = m;
+      useLang(m.lang);
       render();
+    }
+  }
+
+  function useLang(code) {
+    const c = allContent && (allContent[code] || allContent.fr);
+    if (!c) return;
+    window.I18N.set(c.lang);
+    document.title = tr('pageTitle');
+    conn.textContent = tr('connLost');
+    if (c !== content) {
+      content = c;
+      ui.mainHTML = null;
+      ui.sig = null;
     }
   }
 
@@ -107,12 +124,15 @@
     unmountChallenge();
     ui.mainHTML = null;
     document.body.classList.remove('halluc', 'ghost');
+    const F = (k) => window.I18N.in('fr', k);
+    const A = (k) => window.I18N.in('aeb', k);
     main.innerHTML = `<section class="stack" style="padding-top:8vh">
       <h1 class="h2" style="font-size:2.7rem">La Nuit<br>du Manoir</h1>
-      <p class="lead muted">Entre ton prénom pour t’asseoir à la table.</p>
-      ${room ? '' : '<input class="input code" id="code" maxlength="4" placeholder="CODE" autocapitalize="characters" autocomplete="off" aria-label="Code de la partie">'}
-      <input class="input" id="name" maxlength="14" placeholder="Ton prénom" autocomplete="off" aria-label="Ton prénom" value="${esc(localStorage.getItem('manoir.name') || '')}">
-      <button class="btn primary" id="enter">Entrer dans le manoir</button>
+      <p class="h2 arsub" dir="rtl" lang="ar-TN">ليلة القصر</p>
+      <p class="lead muted">${esc(F('joinIntro'))}<br><span dir="rtl" lang="ar-TN">${esc(A('joinIntro'))}</span></p>
+      ${room ? '' : `<input class="input code" id="code" maxlength="4" placeholder="CODE" autocapitalize="characters" autocomplete="off" aria-label="${esc(F('joinCode'))} / ${esc(A('joinCode'))}">`}
+      <input class="input" id="name" maxlength="14" placeholder="${esc(F('joinName'))} / ${esc(A('joinName'))}" autocomplete="off" aria-label="${esc(F('joinName'))} / ${esc(A('joinName'))}" value="${esc(localStorage.getItem('manoir.name') || '')}">
+      <button class="btn primary" id="enter">${esc(F('joinEnter'))} / ${esc(A('joinEnter'))}</button>
       <p class="err" id="err" role="alert">${esc(err || '')}</p></section>`;
     $('#enter').onclick = submitJoin;
     $('#name').addEventListener('keydown', (e) => e.key === 'Enter' && submitJoin());
@@ -122,13 +142,13 @@
     const err = $('#err');
     const nm = $('#name').value.trim();
     if (!nm) {
-      err.textContent = 'Écris ton prénom pour entrer.';
+      err.textContent = both('joinNeedName');
       return;
     }
     if (!room) {
       const c = ($('#code').value || '').toUpperCase().replace(/[^A-Z]/g, '');
       if (c.length !== 4) {
-        err.textContent = 'Saisis le code à 4 lettres affiché sur l’écran.';
+        err.textContent = both('joinNeedCode');
         return;
       }
       room = c;
@@ -148,7 +168,7 @@
     clearTimeout(ui.tt);
     ui.tt = setTimeout(() => toast.classList.remove('on'), 3200);
   };
-  const noteHTML = (n) => `<div class="note ${esc(n.kind)}"><small>Nuit ${n.night}</small>${esc(n.text)}</div>`;
+  const noteHTML = (n) => `<div class="note ${esc(n.kind)}"><small>${esc(tr('nightHdr', { n: n.night }))}</small>${esc(n.text)}</div>`;
   const pl = (id) => S.players.find((p) => p.id === id);
   const others = () => S.players.filter((p) => p.alive && p.id !== S.me.id);
   const chips = (list, sel) =>
@@ -156,7 +176,7 @@
   const journalPreview = (n) => {
     const l = S.log.slice(-n);
     if (!l.length) return '';
-    return `<div class="stack"><h3 class="h3">Dernières informations</h3>${l.slice().reverse().map(noteHTML).join('')}<button class="btn quiet" data-do="openSheet">Ouvrir le journal</button></div>`;
+    return `<div class="stack"><h3 class="h3">${esc(tr('lastInfo'))}</h3>${l.slice().reverse().map(noteHTML).join('')}<button class="btn quiet" data-do="openSheet">${esc(tr('openJournal'))}</button></div>`;
   };
   const waiting = (t, s) => `<div class="stack center" style="padding-top:8vh"><h2 class="h2">${esc(t)}</h2><p class="lead muted">${esc(s)}</p></div>`;
 
@@ -164,11 +184,11 @@
   const VIEW = {};
 
   VIEW.lobby = () => `<div class="stack center" style="padding-top:5vh">
-    <h2 class="h2">Tu es à la table</h2>
-    <p class="lead muted">Le manoir attend les autres invités.</p>
-    <p class="lead">${S.players.length} sur ${S.target}</p>
+    <h2 class="h2">${esc(tr('youAtTable'))}</h2>
+    <p class="lead muted">${esc(tr('waitOthers'))}</p>
+    <p class="lead">${esc(tr('countOf', { n: S.players.length, t: S.target }))}</p>
     <div class="stack" style="width:100%">${S.players
-      .map((p) => `<div class="row" style="grid-template-columns:1fr"><span class="t" style="border-left:5px solid ${p.color};padding-left:10px;text-align:left">${esc(p.name)}</span></div>`)
+      .map((p) => `<div class="row" style="grid-template-columns:1fr"><span class="t" style="border-inline-start:5px solid ${p.color};padding-inline-start:10px;text-align:start">${esc(p.name)}</span></div>`)
       .join('')}</div></div>`;
 
   VIEW.roles = () => {
@@ -176,30 +196,29 @@
     const r = content.roles[me.role];
     const it = me.items[0] && content.items[me.items[0]];
     return `<div class="stack">
-      <div class="role-card center"><div class="ic">${r.icon}</div><h2 class="h2">Tu es un ${esc(r.name)}</h2><p class="lead" style="margin-top:8px">${esc(r.text)}</p></div>
-      ${it ? `<div class="row"><div class="ic">${it.icon}</div><div><div class="t">${esc(it.name)}</div><div class="d">Ton objet de départ. ${esc(it.desc)}</div></div></div>` : ''}
-      <p class="small">Cache ton écran : personne d’autre ne doit connaître ton rôle. Touche ton prénom en haut pour le revoir plus tard.</p></div>`;
+      <div class="role-card center"><div class="ic">${r.icon}</div><h2 class="h2">${esc(tr('youAre', { x: r.name }))}</h2><p class="lead" style="margin-top:8px">${esc(r.text)}</p></div>
+      ${it ? `<div class="row"><div class="ic">${it.icon}</div><div><div class="t">${esc(it.name)}</div><div class="d">${esc(tr('startItem', { x: it.desc }))}</div></div></div>` : ''}
+      <p class="small">${esc(tr('hideScreen'))}</p></div>`;
   };
 
   VIEW.podium = () => {
     const p = S.podium;
-    const ord = p.rank === 1 ? '1er' : p.rank + 'e';
     const g = p.gained && content.items[p.gained];
     return `<div class="stack center" style="padding-top:3vh">
-      <p class="small">Résultat de l’épreuve</p>
-      <h2 class="h2">${p.rank ? `Tu finis ${ord} sur ${p.total}` : 'Tu observes'}</h2>
+      <p class="small">${esc(tr('challengeResult'))}</p>
+      <h2 class="h2">${esc(p.rank ? (p.rank === 1 ? tr('rank1', { t: p.total }) : tr('rankN', { r: p.rank, t: p.total })) : tr('youWatch'))}</h2>
       <p class="lead muted">${esc(p.label)}</p>
-      ${S.me.marker ? '<p class="lead" style="color:var(--flame)">♛ Tu es le Marqueur. À minuit, tu peux viser une cible.</p>' : `<p class="lead muted">${esc(p.marker)} est le Marqueur.</p>`}
-      ${p.immune ? '<p class="lead">Dernier Cercle : tu es protégé du Rituel ce soir.</p>' : ''}
-      ${g ? `<div class="row" style="width:100%;text-align:left"><div class="ic">${g.icon}</div><div><div class="t">Tu reçois : ${esc(g.name)}</div><div class="d">${esc(g.desc)}</div></div></div>` : p.rank && p.rank <= 2 ? '<p class="small">Ton inventaire est plein : pas de nouvel objet.</p>' : ''}
+      ${S.me.marker ? `<p class="lead" style="color:var(--flame)">${esc(tr('youAreMarker'))}</p>` : `<p class="lead muted">${esc(tr('otherIsMarker', { x: p.marker }))}</p>`}
+      ${p.immune ? `<p class="lead">${esc(tr('youProtected'))}</p>` : ''}
+      ${g ? `<div class="row" style="width:100%;text-align:start"><div class="ic">${g.icon}</div><div><div class="t">${esc(tr('youReceive', { x: g.name }))}</div><div class="d">${esc(g.desc)}</div></div></div>` : p.rank && p.rank <= 2 ? `<p class="small">${esc(tr('invFull'))}</p>` : ''}
     </div>`;
   };
 
   function ghostMinuit() {
     const m = S.minuit;
-    if (!m.curseOptions.length) return waiting('Tu es un Hanté', 'Tu observes la nuit depuis l’autre côté.');
-    return `<div class="stack"><h2 class="h3">Choisis une malédiction</h2>
-      <p class="small">Les Hantés votent ensemble. La plus choisie frappe les vivants.</p>
+    if (!m.curseOptions.length) return waiting(tr('youHaunted'), tr('hauntedWatch'));
+    return `<div class="stack"><h2 class="h3">${esc(tr('chooseCurse'))}</h2>
+      <p class="small">${esc(tr('cursesVote'))}</p>
       ${m.curseOptions
         .map((id) => {
           const c = content.curses[id];
@@ -215,16 +234,16 @@
     if (!me.alive) return ghostMinuit();
     const ch = ui.choose;
     if (ch) {
-      const title = ch.kind === 'mark' ? 'Qui doit perdre 1 Raison ?' : ch.kind === 'murmur' ? 'À qui murmurer ?' : `${content.items[ch.item].name} : sur qui ?`;
-      return `<div class="stack"><h2 class="h3">${esc(title)}</h2>${chips(others())}<button class="btn quiet" data-do="cancelChoose">Annuler</button></div>`;
+      const title = ch.kind === 'mark' ? tr('whoLosesOne') : ch.kind === 'murmur' ? tr('whoWhisper') : tr('itemOnWhom', { x: content.items[ch.item].name });
+      return `<div class="stack"><h2 class="h3">${esc(title)}</h2>${chips(others())}<button class="btn quiet" data-do="cancelChoose">${esc(tr('cancel'))}</button></div>`;
     }
-    let h = '<div class="stack"><p class="small">Minuit. Ce que tu décides ici reste secret. Un seul objet par nuit.</p>';
+    let h = `<div class="stack"><p class="small">${esc(tr('midnightHelp'))}</p>`;
     let any = false;
     if (me.marker) {
       any = true;
       const tg = a.mark && pl(a.mark);
-      h += `<div class="row"><div class="ic">♛</div><div><div class="t">Marqueur</div><div class="d">Vise un invité : il perd 1 Raison, sauf protection.</div>${tg ? `<div class="d" style="color:var(--flame)">Cible prévue : ${esc(tg.name)}</div>` : ''}</div>
-        <div class="go"><button class="btn ${tg ? 'on' : ''}" data-do="choose" data-kind="mark">${tg ? 'Changer de cible' : 'Choisir une cible'}</button>${tg ? '<button class="btn quiet" data-do="clear" data-kind="mark">Retirer</button>' : ''}</div></div>`;
+      h += `<div class="row"><div class="ic">♛</div><div><div class="t">${esc(tr('markerTitle'))}</div><div class="d">${esc(tr('markerDesc'))}</div>${tg ? `<div class="d" style="color:var(--flame)">${esc(tr('plannedTarget', { x: tg.name }))}</div>` : ''}</div>
+        <div class="go"><button class="btn ${tg ? 'on' : ''}" data-do="choose" data-kind="mark">${esc(tg ? tr('changeTarget') : tr('chooseTarget'))}</button>${tg ? `<button class="btn quiet" data-do="clear" data-kind="mark">${esc(tr('remove'))}</button>` : ''}</div></div>`;
     }
     const plannedIdx = a.item ? me.items.indexOf(a.item.item) : -1;
     me.items.forEach((id, i) => {
@@ -232,22 +251,22 @@
       const it = content.items[id];
       const planned = i === plannedIdx;
       const tg = planned && a.item.target && pl(a.item.target);
-      h += `<div class="row"><div class="ic">${it.icon}</div><div><div class="t">${esc(it.name)}</div><div class="d">${esc(it.desc)}</div>${planned ? `<div class="d" style="color:var(--flame)">Prévu cette nuit${tg ? ' sur ' + esc(tg.name) : ''}</div>` : ''}</div>
-        <div class="go">${planned ? '<button class="btn quiet" data-do="clearItem">Annuler</button>' : `<button class="btn" data-do="useItem" data-item="${id}">Utiliser</button>`}</div></div>`;
+      h += `<div class="row"><div class="ic">${it.icon}</div><div><div class="t">${esc(it.name)}</div><div class="d">${esc(it.desc)}</div>${planned ? `<div class="d" style="color:var(--flame)">${esc(tr('plannedTonight'))}${tg ? esc(tr('plannedOn', { x: tg.name })) : ''}</div>` : ''}</div>
+        <div class="go">${planned ? `<button class="btn quiet" data-do="clearItem">${esc(tr('cancel'))}</button>` : `<button class="btn" data-do="useItem" data-item="${id}">${esc(tr('use'))}</button>`}</div></div>`;
     });
     if (me.role === 'lie' && !me.usedMurmur) {
       any = true;
       const tg = a.murmur && pl(a.murmur);
-      h += `<div class="row"><div class="ic">🩸</div><div><div class="t">Murmurer</div><div class="d">Une seule fois dans la partie. Si ta cible est ton Lié, vous vous reconnaîtrez. Sinon, elle saura que quelqu’un l’a sondée.</div>${tg ? `<div class="d" style="color:var(--flame)">Cible prévue : ${esc(tg.name)}</div>` : ''}</div>
-        <div class="go"><button class="btn ${tg ? 'on' : ''}" data-do="choose" data-kind="murmur">${tg ? 'Changer de cible' : 'Murmurer à…'}</button>${tg ? '<button class="btn quiet" data-do="clear" data-kind="murmur">Retirer</button>' : ''}</div></div>`;
+      h += `<div class="row"><div class="ic">🩸</div><div><div class="t">${esc(tr('murmurTitle'))}</div><div class="d">${esc(tr('murmurDesc'))}</div>${tg ? `<div class="d" style="color:var(--flame)">${esc(tr('plannedTarget', { x: tg.name }))}</div>` : ''}</div>
+        <div class="go"><button class="btn ${tg ? 'on' : ''}" data-do="choose" data-kind="murmur">${esc(tg ? tr('changeTarget') : tr('murmurTo'))}</button>${tg ? `<button class="btn quiet" data-do="clear" data-kind="murmur">${esc(tr('remove'))}</button>` : ''}</div></div>`;
     }
     if (m.canPacte) {
       any = true;
       const on = !!a.pacte;
-      h += `<div class="row"><div class="ic">🕯️</div><div><div class="t">Pacte avec la Chose</div><div class="d">Tu perds 1 Raison à l’aube, mais tu reçois un objet tout de suite.</div></div>
-        <div class="go"><button class="btn ${on ? 'on' : ''}" data-do="pacte" data-on="${on ? 0 : 1}">${on ? 'Pacte accepté. Annuler' : 'Offrir 1 Raison'}</button></div></div>`;
+      h += `<div class="row"><div class="ic">🕯️</div><div><div class="t">${esc(tr('pacteTitle'))}</div><div class="d">${esc(tr('pacteDesc'))}</div></div>
+        <div class="go"><button class="btn ${on ? 'on' : ''}" data-do="pacte" data-on="${on ? 0 : 1}">${esc(on ? tr('pacteOn') : tr('pacteOffer'))}</button></div></div>`;
     }
-    if (!any) h += '<p class="lead muted">Tu n’as rien à faire cette nuit. Reste discret.</p>';
+    if (!any) h += `<p class="lead muted">${esc(tr('nothingToDo'))}</p>`;
     return h + '</div>';
   };
 
@@ -255,21 +274,21 @@
     const me = S.me;
     const v = S.veillee;
     if (!me.alive) {
-      return `<div class="stack center"><h2 class="h2">Tu es un Hanté</h2><p class="lead muted">Tu observes la veillée. Les vivants ne peuvent ni t’entendre, ni te voir.</p>
-        ${v.curse ? `<p class="lead">Malédiction de la nuit : ${esc(v.curse.name)}</p>` : ''}</div>`;
+      return `<div class="stack center"><h2 class="h2">${esc(tr('youHaunted'))}</h2><p class="lead muted">${esc(tr('hauntedVigil'))}</p>
+        ${v.curse ? `<p class="lead">${esc(tr('curseTonight', { x: v.curse.name }))}</p>` : ''}</div>`;
     }
     let h = '<div class="stack">';
-    if (me.hallu) h += '<p class="small" style="color:var(--wax-hi)">Ta raison vacille : ce que tu vois ou apprends peut être faux.</p>';
-    if (v.rune) h += `<div><p class="small center">Ta rune de la nuit</p><div class="rune">${v.rune}</div></div>`;
+    if (me.hallu) h += `<p class="small" style="color:var(--wax-hi)">${esc(tr('halluWarn'))}</p>`;
+    if (v.rune) h += `<div><p class="small center">${esc(tr('yourRune'))}</p><div class="rune">${v.rune}</div></div>`;
     if (v.silence) {
       if (ui.choose && ui.choose.kind === 'gesture') {
-        h += `<h2 class="h3">Qui accuses-tu ?</h2>${chips(others())}<button class="btn quiet" data-do="cancelChoose">Annuler</button>`;
+        h += `<h2 class="h3">${esc(tr('whoAccuse'))}</h2>${chips(others())}<button class="btn quiet" data-do="cancelChoose">${esc(tr('cancel'))}</button>`;
       } else {
-        h += `<p class="lead center" style="color:var(--wax-hi)">Silence. Seuls les gestes sont permis.</p>
+        h += `<p class="lead center" style="color:var(--wax-hi)">${esc(tr('silenceLead'))}</p>
           <div class="gest-grid">${content.gestures.map((g, i) => `<button class="btn" data-do="gesture" data-g="${i}">${g.icon}<small>${esc(g.label)}</small></button>`).join('')}</div>`;
       }
     } else {
-      h += '<p class="lead muted center">Parle à voix haute avec les autres. Ne montre pas ton écran.</p>';
+      h += `<p class="lead muted center">${esc(tr('talkAloud'))}</p>`;
     }
     return h + journalPreview(1) + '</div>';
   };
@@ -277,34 +296,34 @@
   VIEW.rituel = () => {
     const me = S.me;
     const r = S.rituel;
-    if (!me.alive) return waiting('Les vivants votent', 'Tu ne peux que regarder.');
-    if (r.auto) return waiting('Le duel est décisif', 'Il ne reste qu’une proie pour la Chose.');
+    if (!me.alive) return waiting(tr('livingVote'), tr('onlyWatch'));
+    if (r.auto) return waiting(tr('duelTitle'), tr('duelSub'));
     if (r.isPossessed) {
       const t = r.possessed && pl(r.possessed);
-      return `<div class="stack center" style="padding-top:5vh"><h2 class="h2">Quelque chose parle à travers toi</h2>
-        <p class="lead">Ton vote est déjà donné${t ? ' : <b>' + esc(t.name) + '</b>' : ''}.</p><p class="small">Tu n’as pas ton mot à dire. Les autres l’ignorent.</p></div>`;
+      return `<div class="stack center" style="padding-top:5vh"><h2 class="h2">${esc(tr('possessedTitle'))}</h2>
+        <p class="lead">${esc(tr('voteGiven'))}${t ? ' : <b>' + esc(t.name) + '</b>' : ''}.</p><p class="small">${esc(tr('noSay'))}</p></div>`;
     }
     const cands = r.eligible.filter((id) => id !== me.id).map(pl);
-    return `<div class="stack"><h2 class="h3">Qui la Chose doit-elle toucher ?</h2>
-      ${r.immune ? '<p class="small">Tu es protégé ce soir : on ne peut pas te désigner.</p>' : ''}
+    return `<div class="stack"><h2 class="h3">${esc(tr('whoToTouch'))}</h2>
+      ${r.immune ? `<p class="small">${esc(tr('youProtectedNow'))}</p>` : ''}
       ${chips(cands.map((p) => ({ ...p })), '')
         .replace(/data-do="target"/g, 'data-do="vote"')
         .replace(new RegExp(`class="chip " (style="[^"]*") data-do="vote" data-id="${r.myVote}"`), 'class="chip sel" $1 data-do="vote" data-id="' + r.myVote + '"')}
-      <button class="btn quiet" data-do="vote" data-id="">${r.voted && r.myVote === null ? 'Abstention enregistrée' : 'S’abstenir'}</button>
-      <p class="small">${r.voted ? 'Vote enregistré. Tu peux encore le changer.' : 'Le vote se termine quand tout le monde a voté, ou quand le temps est écoulé.'}</p></div>`;
+      <button class="btn quiet" data-do="vote" data-id="">${esc(r.voted && r.myVote === null ? tr('abstainDone') : tr('abstain'))}</button>
+      <p class="small">${esc(r.voted ? tr('voteSaved') : tr('voteHelp'))}</p></div>`;
   };
 
-  VIEW.aube = () => waiting('L’aube se lève', 'Regarde l’écran pour savoir ce que la nuit a laissé.');
+  VIEW.aube = () => waiting(tr('dawnRises'), tr('dawnLook'));
 
   VIEW.fin = () => {
     const e = S.end;
     const won = e.winnerIds.includes(S.me.id);
-    const roleName = { lie: 'Lié', solitaire: 'Solitaire' };
-    return `<div class="stack center" style="padding-top:3vh"><p class="small">Fin de la nuit</p><h2 class="h2">${won ? 'Victoire' : 'Défaite'}</h2><p class="lead">${esc(e.title)}</p></div>
+    const roleName = { lie: content.roles.lie.name, solitaire: content.roles.solitaire.name };
+    return `<div class="stack center" style="padding-top:3vh"><p class="small">${esc(tr('endNight'))}</p><h2 class="h2">${esc(won ? tr('victory') : tr('defeat'))}</h2><p class="lead">${esc(e.title)}</p></div>
       <div class="stack">${e.roles
-        .map((r) => `<div class="row" style="grid-template-columns:1fr"><span class="t" style="border-left:5px solid ${r.color};padding-left:10px">${esc(r.name)} <span class="muted">${roleName[r.role]}${r.alive ? '' : ', Hanté'}</span></span></div>`)
+        .map((r) => `<div class="row" style="grid-template-columns:1fr"><span class="t" style="border-inline-start:5px solid ${r.color};padding-inline-start:10px">${esc(r.name)} <span class="muted">${esc(roleName[r.role])}${r.alive ? '' : esc(tr('hauntedComma'))}</span></span></div>`)
         .join('')}</div>
-      <p class="small center">L’écran propose de rejouer avec les mêmes invités.</p>`;
+      <p class="small center">${esc(tr('replayHint'))}</p>`;
   };
 
   // ------------------------------------------------------------------ épreuves
@@ -325,11 +344,11 @@
     draw() {
       const { qs } = this.ch;
       if (this.i >= qs.length) {
-        this.root.innerHTML = waiting('Réponses envoyées', 'Attends les autres invités…');
+        this.root.innerHTML = waiting(tr('answersSent'), tr('waitOthersDots'));
         return;
       }
       const q = qs[this.i];
-      this.root.innerHTML = `<p class="small">Question ${this.i + 1} sur ${qs.length}</p><h2 class="q">${esc(q.q)}</h2>
+      this.root.innerHTML = `<p class="small">${esc(tr('questionN', { i: this.i + 1, n: qs.length }))}</p><h2 class="q">${esc(q.q)}</h2>
         <div class="opts">${q.opts.map((o, k) => `<button class="opt" data-k="${k}">${esc(o)}</button>`).join('')}</div>`;
       this.root.onclick = (e) => {
         const b = e.target.closest('.opt');
@@ -366,13 +385,13 @@
       }
     }
     drawDone() {
-      this.root.innerHTML = waiting('Séquence envoyée', 'Attends les autres invités…');
+      this.root.innerHTML = waiting(tr('seqSent'), tr('waitOthersDots'));
     }
     run() {
       if (this.state === 'done') return this.drawDone();
       const ch = this.ch;
       const t = now();
-      this.root.innerHTML = '<p class="small center" id="mt">Regarde bien…</p><div class="glyphbox" id="gb"></div><div id="inp"></div>';
+      this.root.innerHTML = `<p class="small center" id="mt">${esc(tr('watchWell'))}</p><div class="glyphbox" id="gb"></div><div id="inp"></div>`;
       const gb = $('#gb', this.root);
       for (let i = 0; i < ch.len; i++) {
         const on = ch.flashStart + i * ch.flashMs - t;
@@ -388,10 +407,10 @@
       this.state = 'input';
       const ch = this.ch;
       $('#gb', this.root).textContent = '';
-      $('#mt', this.root).textContent = 'À toi : retape la séquence dans l’ordre.';
+      $('#mt', this.root).textContent = tr('yourTurnSeq');
       const dots = () => Array.from({ length: ch.len }, (_, i) => `<i class="${i < this.taps.length ? 'on' : ''}"></i>`).join('');
       $('#inp', this.root).innerHTML = `<div class="dots" id="dts">${dots()}</div>
-        <div class="grid3" style="margin-top:14px">${ch.glyphs.map((g, k) => `<button class="cell" data-k="${k}" aria-label="symbole ${k + 1}">${g}</button>`).join('')}</div>`;
+        <div class="grid3" style="margin-top:14px">${ch.glyphs.map((g, k) => `<button class="cell" data-k="${k}" aria-label="${esc(tr('symbolN', { n: k + 1 }))}">${g}</button>`).join('')}</div>`;
       $('#inp', this.root).onclick = (e) => {
         const b = e.target.closest('.cell');
         if (!b || this.state !== 'input') return;
@@ -417,16 +436,16 @@
       this.timers = [];
       this.hit = new Set();
       this.score = 0;
-      root.innerHTML = `<p class="score" id="sc">Prépare-toi…</p>
+      root.innerHTML = `<p class="score" id="sc">${esc(tr('getReady'))}</p>
         <div class="grid3">${Array.from({ length: 9 }, () => '<div class="cell"></div>').join('')}</div>
-        <p class="small center">Touche les yeux qui s’ouvrent. Évite les araignées.</p>`;
+        <p class="small center">${esc(tr('tapEyes'))}</p>`;
       this.cells = [...root.querySelectorAll('.cell')];
       root.addEventListener('pointerdown', (this.onTap = (e) => {
         const b = e.target.closest('.eye');
         if (b) this.tap(b);
       }));
       const t = now();
-      this.later(ch.goStart - t, () => { $('#sc', root).textContent = 'Score : 0'; });
+      this.later(ch.goStart - t, () => { $('#sc', root).textContent = tr('scoreN', { n: 0 }); });
       ch.sched.forEach((ev, i) => {
         const at = ch.goStart + ev.at - t;
         if (at + ev.dur < 0) return;
@@ -440,7 +459,7 @@
     update() { /* l'état local fait foi */ }
     show(i) {
       const ev = this.ch.sched[i];
-      this.cells[ev.cell].innerHTML = `<button class="eye ${ev.kind === 'eye' ? 'eye-r' : ''}" data-i="${i}" aria-label="${ev.kind === 'eye' ? 'œil' : 'araignée'}">${ev.kind === 'eye' ? '👁️' : '🕷️'}</button>`;
+      this.cells[ev.cell].innerHTML = `<button class="eye ${ev.kind === 'eye' ? 'eye-r' : ''}" data-i="${i}" aria-label="${esc(ev.kind === 'eye' ? tr('eye') : tr('spider'))}">${ev.kind === 'eye' ? '👁️' : '🕷️'}</button>`;
     }
     hide(i) {
       const ev = this.ch.sched[i];
@@ -454,7 +473,7 @@
       const ev = this.ch.sched[i];
       send({ t: 'ch', tap: i });
       this.score += ev.kind === 'eye' ? 1 : -1;
-      $('#sc', this.root).textContent = 'Score : ' + this.score;
+      $('#sc', this.root).textContent = tr('scoreN', { n: this.score });
       if (ev.kind !== 'eye') {
         b.classList.add('bad');
         vib(70);
@@ -486,35 +505,35 @@
       this.sig = sig;
       if (ch.step === 'write') {
         if (ch.submitted) {
-          this.root.innerHTML = waiting('Réponse cachée', 'Elle se mêle aux autres. Attends les autres invités…');
+          this.root.innerHTML = waiting(tr('answerHidden'), tr('answerMixed'));
           return;
         }
-        this.root.innerHTML = `<p class="small">Invente une réponse crédible. Une seule des réponses affichées sera la vraie.</p>
+        this.root.innerHTML = `<p class="small">${esc(tr('inventPlausible'))}</p>
           <h2 class="q">${esc(ch.prompt)}</h2>
-          <textarea class="textarea" id="tx" maxlength="90" placeholder="Écris ta réponse…" aria-label="Ta réponse inventée"></textarea>
-          <button class="btn primary" id="sendtx">Envoyer ma réponse</button>`;
+          <textarea class="textarea" id="tx" maxlength="90" placeholder="${esc(tr('writeAnswer'))}" aria-label="${esc(tr('yourInvented'))}"></textarea>
+          <button class="btn primary" id="sendtx">${esc(tr('sendAnswer'))}</button>`;
         $('#sendtx', this.root).onclick = () => {
           const text = $('#tx', this.root).value.trim();
           if (!text) return;
           send({ t: 'ch', text });
           this.sig = 'sent';
-          this.root.innerHTML = waiting('Réponse cachée', 'Elle se mêle aux autres. Attends les autres invités…');
+          this.root.innerHTML = waiting(tr('answerHidden'), tr('answerMixed'));
         };
         return;
       }
       if (ch.picked !== null && ch.picked !== undefined) {
-        this.root.innerHTML = waiting('Choix envoyé', 'Le verdict tombera sur l’écran.');
+        this.root.innerHTML = waiting(tr('choiceSent'), tr('verdictScreen'));
         return;
       }
-      this.root.innerHTML = `<p class="small">Laquelle de ces réponses est la vraie ?</p><h2 class="q">${esc(ch.prompt)}</h2>
-        <div class="opts">${ch.options.map((o, i) => `<button class="opt ${o.mine ? 'mine' : ''}" data-i="${i}" ${o.mine ? 'disabled' : ''}>${esc(o.text)}${o.mine ? ' <span class="small">(ta réponse)</span>' : ''}</button>`).join('')}</div>`;
+      this.root.innerHTML = `<p class="small">${esc(tr('whichIsReal'))}</p><h2 class="q">${esc(ch.prompt)}</h2>
+        <div class="opts">${ch.options.map((o, i) => `<button class="opt ${o.mine ? 'mine' : ''}" data-i="${i}" ${o.mine ? 'disabled' : ''}>${esc(o.text)}${o.mine ? ` <span class="small">${esc(tr('yourAnswer'))}</span>` : ''}</button>`).join('')}</div>`;
       this.root.onclick = (e) => {
         const b = e.target.closest('.opt');
         if (!b || b.disabled) return;
         this.root.onclick = null;
         send({ t: 'ch', pick: +b.dataset.i });
         this.sig = 'sent';
-        this.root.innerHTML = waiting('Choix envoyé', 'Le verdict tombera sur l’écran.');
+        this.root.innerHTML = waiting(tr('choiceSent'), tr('verdictScreen'));
       };
     }
     destroy() {
@@ -528,7 +547,7 @@
     const ch = S.ch;
     if (!S.me.alive) {
       unmountChallenge();
-      setMain(waiting('Tu es un Hanté', 'Tu observes l’épreuve. Tes malédictions viendront à minuit.'));
+      setMain(waiting(tr('youHaunted'), tr('ghostChallenge')));
       return;
     }
     if (!ui.chUI || ui.chId !== ch.id) {
@@ -560,14 +579,14 @@
     const me = S.me;
     const lobby = S.phase === 'lobby';
     hdr.hidden = false;
-    hdr.innerHTML = `<button class="who" id="whoBtn"><b>${esc(me.name)}</b><small>${lobby ? 'À la table' : `${me.alive ? '' : 'Hanté. '}Acte ${esc(S.actRoman)}${S.night > 0 ? ", nuit " + S.night : ""}. Touche pour voir ton rôle`}</small></button>${lobby ? '' : candles(me.raison, content.cfg.raison)}`;
+    hdr.innerHTML = `<button class="who" id="whoBtn"><b>${esc(me.name)}</b><small>${esc(lobby ? tr('atTable') : `${me.alive ? '' : tr('hauntedPrefix')}${tr('actLabel', { r: S.actRoman })}${S.night > 0 ? tr('nightN', { n: S.night }) : ''}. ${tr('touchRole')}`)}</small></button>${lobby ? '' : candles(me.raison, content.cfg.raison)}`;
     $('#whoBtn').onclick = showRole;
   }
 
   function showRole() {
     if (!S || !S.me.role) return;
     const r = content.roles[S.me.role];
-    peek.innerHTML = `<div class="ic">${r.icon}</div><h2 class="h2">${esc(r.name)}</h2><p class="lead">${esc(r.text)}</p><p class="small">Touche pour fermer.</p>`;
+    peek.innerHTML = `<div class="ic">${r.icon}</div><h2 class="h2">${esc(r.name)}</h2><p class="lead">${esc(r.text)}</p><p class="small">${esc(tr('touchClose'))}</p>`;
     peek.hidden = false;
     clearTimeout(ui.peekT);
     ui.peekT = setTimeout(() => { peek.hidden = true; }, 5000);
@@ -578,11 +597,11 @@
     const me = S.me;
     let h = '';
     if (S.phase === 'roles') {
-      h = me.done ? '<button class="btn" disabled>En attente des autres…</button>' : '<button class="btn primary" data-do="done">J’ai compris mon rôle</button>';
+      h = me.done ? `<button class="btn" disabled>${esc(tr('waitingOthers'))}</button>` : `<button class="btn primary" data-do="done">${esc(tr('understood'))}</button>`;
     } else if (S.phase === 'minuit' && !ui.choose) {
-      h = me.done ? '<button class="btn on" data-do="undone">Je suis prêt. Modifier</button>' : '<button class="btn primary" data-do="done">J’ai fini</button>';
+      h = me.done ? `<button class="btn on" data-do="undone">${esc(tr('ready'))}</button>` : `<button class="btn primary" data-do="done">${esc(tr('done'))}</button>`;
     } else if (S.phase === 'veillee' && me.alive && !ui.choose) {
-      h = me.done ? '<button class="btn on" data-do="undone">Prêt à voter. Annuler</button>' : '<button class="btn primary" data-do="done">Prêt à voter</button>';
+      h = me.done ? `<button class="btn on" data-do="undone">${esc(tr('readyVoteOn'))}</button>` : `<button class="btn primary" data-do="done">${esc(tr('readyVote'))}</button>`;
     }
     bar.hidden = !h;
     barIn.innerHTML = h;
@@ -592,16 +611,16 @@
   function renderSheetBtn() {
     const n = S.log.length;
     sheetBtn.hidden = !n || S.phase === 'crepuscule' || S.phase === 'lobby';
-    sheetBtn.textContent = `Journal (${n})`;
+    sheetBtn.textContent = tr('journalN', { n });
   }
 
   function renderSheet() {
     const nights = {};
     S.log.forEach((n) => (nights[n.night] = nights[n.night] || []).push(n));
     const keys = Object.keys(nights).map(Number).sort((a, b) => b - a);
-    sheet.innerHTML = `<div class="in"><div style="display:flex;justify-content:space-between;align-items:center"><h2 class="h2">Journal</h2><button class="btn quiet" data-do="closeSheet" style="width:auto">Fermer</button></div>
-      ${keys.map((k) => `<h3 class="h3">Nuit ${k}</h3>${nights[k].slice().reverse().map(noteHTML).join('')}`).join('') || '<p class="muted">Rien pour le moment.</p>'}
-      <p class="small">Seuls toi et le manoir lisent ces lignes. Quand ta Raison tombe à 1, certaines peuvent mentir.</p></div>`;
+    sheet.innerHTML = `<div class="in"><div style="display:flex;justify-content:space-between;align-items:center"><h2 class="h2">${esc(tr('journal'))}</h2><button class="btn quiet" data-do="closeSheet" style="width:auto">${esc(tr('close'))}</button></div>
+      ${keys.map((k) => `<h3 class="h3">${esc(tr('nightHdr', { n: k }))}</h3>${nights[k].slice().reverse().map(noteHTML).join('')}`).join('') || `<p class="muted">${esc(tr('nothingYet'))}</p>`}
+      <p class="small">${esc(tr('journalNote'))}</p></div>`;
   }
 
   function feedback() {
@@ -610,7 +629,7 @@
     if (p) {
       if (me.raison < p.raison) vib([250, 80, 250]);
       if (S.log.length > p.logN) {
-        flash('Une nouvelle information est arrivée dans ton journal.');
+        flash(tr('newInfo'));
         vib(120);
       }
       if (S.phase !== p.phase) vib(60);
@@ -707,7 +726,7 @@
     // retour dans la partie après un rechargement de page
     joinName = savedName;
     wantJoin = true;
-    main.innerHTML = '<div class="stack center" style="padding-top:12vh"><p class="lead muted">Retour dans le manoir…</p></div>';
+    main.innerHTML = `<div class="stack center" style="padding-top:12vh"><p class="lead muted">${esc(both('back'))}</p></div>`;
     connect();
   } else showJoin('');
 })();

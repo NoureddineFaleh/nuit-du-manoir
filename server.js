@@ -11,18 +11,15 @@ const { WebSocketServer } = require('ws');
 const QRCode = require('qrcode');
 
 const { Game } = require('./src/game');
-const C = require('./src/content');
+const { LANGS, CLIENT_CONTENT, LANG_LIST, UI_SCRIPT } = require('./src/lang');
 const U = require('./src/util');
 
 const PORT = parseInt(process.env.PORT || '3000', 10);
 const SCALE = parseFloat(process.env.TIME_SCALE || '1'); // < 1 pour accélérer les tests
 const PUBLIC_URL = (process.env.PUBLIC_URL || '').replace(/\/$/, '');
 
-// Contenu statique envoyé aux clients à la connexion (noms, icônes, descriptions)
-const CLIENT_CONTENT = {
-  items: C.ITEMS, curses: C.CURSES, gestures: C.GESTURES, roles: C.ROLES,
-  acts: C.ACTS, events: C.EVENTS, cfg: { raison: C.CFG.RAISON, maxItems: C.CFG.MAX_ITEMS },
-};
+// Messages d'erreur dans toutes les langues (le téléphone ne connaît pas encore la langue de la salle)
+const errText = (code) => Object.values(LANGS).map((l) => l.T.err[code]).join('  /  ');
 
 // ---------------------------------------------------------------------------
 //  Adresse à encoder dans le QR code
@@ -134,6 +131,7 @@ function createRoom(base) {
 // ---------------------------------------------------------------------------
 const app = express();
 app.disable('x-powered-by');
+app.get('/ui.js', (_req, res) => res.type('application/javascript').send(UI_SCRIPT));
 app.use(express.static(path.join(__dirname, 'public'), { maxAge: 0 }));
 app.get('/', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'screen.html')));
 app.get('/play', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'play.html')));
@@ -196,6 +194,9 @@ wss.on('connection', (ws, req) => {
         case 'target':
           g.setTarget(m.n);
           break;
+        case 'lang':
+          g.setLang(m.lang);
+          break;
         case 'start':
           g.start();
           break;
@@ -204,7 +205,7 @@ wss.on('connection', (ws, req) => {
           if (g.removePlayer(m.id)) {
             room.sockets.delete(m.id);
             if (ws2) {
-              send(ws2, { t: 'error', code: 'kicked', text: 'Tu as été renvoyé du manoir.' });
+              send(ws2, { t: 'error', code: 'kicked', text: errText('kicked') });
               ws2.close();
             }
           }
@@ -227,7 +228,7 @@ wss.on('connection', (ws, req) => {
     });
 
     room.ready.then(() => {
-      send(ws, { t: 'hello', role: 'screen', code: room.code, joinUrl: room.joinUrl, qr: room.qr, content: CLIENT_CONTENT });
+      send(ws, { t: 'hello', role: 'screen', code: room.code, joinUrl: room.joinUrl, qr: room.qr, content: CLIENT_CONTENT, langs: LANG_LIST });
       room.flush(true);
     });
     return;
@@ -237,7 +238,7 @@ wss.on('connection', (ws, req) => {
   if (role === 'player') {
     const room = rooms.get(code);
     if (!room) {
-      send(ws, { t: 'error', code: 'noroom', text: 'Salle introuvable. Scanne de nouveau le QR code affiché sur l’écran.' });
+      send(ws, { t: 'error', code: 'noroom', text: errText('noroom') });
       ws.close();
       return;
     }
@@ -251,7 +252,7 @@ wss.on('connection', (ws, req) => {
 
       if (m.t === 'join') {
         const token = typeof m.token === 'string' && /^[a-z0-9]{8,40}$/i.test(m.token) ? m.token : null;
-        if (!token) return send(ws, { t: 'error', code: 'token', text: 'Identifiant invalide.' });
+        if (!token) return send(ws, { t: 'error', code: 'token', text: errText('token') });
         let p = g.players.find((x) => x.token === token);
         if (p) {
           const old = room.sockets.get(p.id);
@@ -266,9 +267,9 @@ wss.on('connection', (ws, req) => {
           room.sockets.set(pid, ws);
           g.setConnected(pid, true);
         } else {
-          if (g.phase !== 'lobby') return send(ws, { t: 'error', code: 'started', text: 'La partie a déjà commencé.' });
+          if (g.phase !== 'lobby') return send(ws, { t: 'error', code: 'started', text: errText('started') });
           p = g.addPlayer(m.name, token);
-          if (!p) return send(ws, { t: 'error', code: 'full', text: 'Le manoir est plein.' });
+          if (!p) return send(ws, { t: 'error', code: 'full', text: errText('full') });
           pid = p.id;
           room.sockets.set(pid, ws);
         }

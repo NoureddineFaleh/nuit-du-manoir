@@ -7,7 +7,7 @@ const assert = require('assert');
 const { server } = require('../server');
 const { Screen, Bot, setHost, sleep } = require('./botlib');
 
-async function playGame(n) {
+async function playGame(n, lang) {
   const screen = new Screen();
   await screen.ready;
   assert(/^[A-Z]{4}$/.test(screen.code), 'code de salle');
@@ -16,6 +16,10 @@ async function playGame(n) {
 
   screen.send({ t: 'target', n });
   await screen.until((s) => s.target === n);
+  if (lang) {
+    screen.send({ t: 'lang', lang });
+    await screen.until((s) => s.lang === lang);
+  }
 
   const bots = [];
   for (let i = 0; i < n; i++) {
@@ -45,6 +49,14 @@ async function playGame(n) {
 
   screen.send({ t: 'start' });
   await screen.until((s) => s.phase === 'roles');
+  assert.strictEqual(screen.S.lang, lang || 'fr', 'langue de la partie');
+  if (lang === 'aeb') {
+    // la narration est bien en arabe, et la langue ne peut plus changer en cours de partie
+    assert(/[\u0600-\u06FF]/.test(screen.S.narr.text), 'narration en arabe');
+    screen.send({ t: 'lang', lang: 'fr' });
+    await sleep(100);
+    assert.strictEqual(screen.S.lang, 'aeb', 'pas de changement de langue en partie');
+  }
 
   // reconnexion d'un téléphone en pleine partie (nuit 2)
   let reconnected = false;
@@ -85,7 +97,8 @@ async function playGame(n) {
   assert.strictEqual(screen.S.players.length, n, 'mêmes invités après « rejouer »');
   assert(screen.S.players.every((p) => p.raison === 3 && p.alive), 'Raison remise à zéro');
 
-  const out = { n, nights: fin.night, end: fin.end.type, phases: [...new Set(screen.phases)].join('>'), reconnected, notes: bots.map((b) => b.stats.notes) };
+  if (lang === 'aeb') assert(/[\u0600-\u06FF]/.test(fin.end.title), 'titre de fin en arabe');
+  const out = { n, lang: lang || 'fr', nights: fin.night, end: fin.end.type, phases: [...new Set(screen.phases)].join('>'), reconnected, notes: bots.map((b) => b.stats.notes) };
   bots.forEach((b) => b.drop());
   screen.ws.close();
   return out;
@@ -96,10 +109,10 @@ async function playGame(n) {
   setHost('127.0.0.1:' + server.address().port);
   const t0 = Date.now();
   const results = [];
-  for (const n of [4, 5]) {
-    const r = await playGame(n);
+  for (const [n, lang] of [[4, 'fr'], [5, 'aeb'], [4, 'aeb']]) {
+    const r = await playGame(n, lang);
     results.push(r);
-    console.log(`✔ ${n} joueurs : fin en nuit ${r.nights} (${r.end}), reconnexion ${r.reconnected ? 'OK' : 'non testée'}, notes privées reçues ${r.notes.join('/')}`);
+    console.log(`✔ ${r.n} joueurs [${r.lang}] : fin en nuit ${r.nights} (${r.end}), reconnexion ${r.reconnected ? 'OK' : 'non testée'}, notes privées reçues ${r.notes.join('/')}`);
   }
   console.log(`\nE2E OK en ${((Date.now() - t0) / 1000).toFixed(1)} s (TIME_SCALE=${process.env.TIME_SCALE})`);
   console.log('Phases vues :', results[0].phases);

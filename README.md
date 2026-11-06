@@ -21,6 +21,14 @@ Variables d'environnement :
 
 Les polices viennent de Google Fonts : sans internet, des polices système prennent le relais.
 
+## Langues
+
+Le salon de l'écran propose **Français** ou **تونسي** (dialecte tunisien, lettres arabes, affichage de droite à gauche). Le choix s'applique à toute la partie, écran et téléphones, et ne peut plus changer une fois la partie lancée.
+
+Tous les textes sont dans `src/lang/fr.js` et `src/lang/aeb.js` (rôles, objets, narration, questions du quiz, anecdotes du bluff, messages, interface). Pour corriger une tournure ou ajouter une question, modifie ces fichiers. Pour ajouter une langue, copie un de ces fichiers et déclare-le dans `src/lang/index.js`.
+
+La voix du narrateur utilise la synthèse vocale du navigateur : une voix arabe est choisie si elle est installée (le tunisien est rare, une voix arabe générique est utilisée sinon). Sans voix arabe, le texte reste affiché.
+
 ## Règles en bref
 
 - Chacun a **3 Raison** (bougies). À 0, on devient **Hanté** : on ne joue plus mais on peut maudire les vivants.

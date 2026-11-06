@@ -24,10 +24,11 @@ const CREATE = {};
 CREATE.quiz = (b, ctx) => {
   const n = 3;
   const ok = (q) => (ctx.act === 1 ? q.lvl <= 2 : q.lvl >= 2);
-  let pool = C.QUESTIONS.filter((q) => ok(q) && !ctx.usedQ.has(q.q));
+  const QS = ctx.L.QUESTIONS;
+  let pool = QS.filter((q) => ok(q) && !ctx.usedQ.has(q.q));
   if (pool.length < n) {
     ctx.usedQ.clear();
-    pool = C.QUESTIONS.filter(ok);
+    pool = QS.filter(ok);
   }
   const sel = U.shuffle(pool).slice(0, n);
   sel.forEach((q) => ctx.usedQ.add(q.q));
@@ -36,7 +37,7 @@ CREATE.quiz = (b, ctx) => {
     return { q: q.q, opts, a: opts.indexOf(q.a) };
   });
   const dur = ctx.S(45);
-  return { ...b, name: 'Quiz glauque', qs, ans: {}, doneAt: {}, dur, endsAt: ctx.now + dur };
+  return { ...b, name: ctx.L.T.ch.names.quiz, qs, ans: {}, doneAt: {}, dur, endsAt: ctx.now + dur };
 };
 
 CREATE.memoire = (b, ctx) => {
@@ -47,7 +48,7 @@ CREATE.memoire = (b, ctx) => {
   const flashMs = ctx.S(0.9);
   const inputAt = flashStart + len * flashMs + ctx.S(0.4);
   const endsAt = inputAt + ctx.S(18);
-  return { ...b, name: 'Mémoire du noir', glyphs, seq, len, flashStart, flashMs, inputAt, endsAt, subs: {}, doneAt: {} };
+  return { ...b, name: ctx.L.T.ch.names.memoire, glyphs, seq, len, flashStart, flashMs, inputAt, endsAt, subs: {}, doneAt: {} };
 };
 
 CREATE.reflexes = (b, ctx) => {
@@ -74,28 +75,28 @@ CREATE.reflexes = (b, ctx) => {
     });
   }
   return {
-    ...b, name: 'Les yeux du manoir', sched, goStart,
+    ...b, name: ctx.L.T.ch.names.reflexes, sched, goStart,
     endsAt: goStart + total + dur + ctx.S(1), taps: {}, strict: ctx.scale >= 1,
   };
 };
 
 CREATE.bluff = (b, ctx) => {
-  let pool = C.PROMPTS.filter((p) => !ctx.usedP.has(p.q));
+  let pool = ctx.L.PROMPTS.filter((p) => !ctx.usedP.has(p.q));
   if (!pool.length) {
     ctx.usedP.clear();
-    pool = C.PROMPTS;
+    pool = ctx.L.PROMPTS;
   }
   const prompt = U.pick(pool);
   ctx.usedP.add(prompt.q);
   const writeEnds = ctx.now + ctx.S(45);
   return {
-    ...b, name: 'La vraie confession', prompt, step: 'write', texts: {}, picks: {}, opts: null,
+    ...b, name: ctx.L.T.ch.names.bluff, prompt, step: 'write', texts: {}, picks: {}, opts: null,
     bonus: {}, endsAt: writeEnds, pickDur: ctx.S(28), over: false,
   };
 };
 
 function create(type, ctx) {
-  const base = { id: ++counter, type, startsAt: ctx.now };
+  const base = { id: ++counter, type, startsAt: ctx.now, L: ctx.L };
   return CREATE[type](base, ctx);
 }
 
@@ -170,7 +171,7 @@ function toPick(st, now, alive) {
     let t = st.texts[pid];
     if (!t || U.norm(t) === U.norm(real)) {
       if (t) st.bonus[pid] = 2000; // il a deviné la vérité : bonus, mais son texte est remplacé
-      t = decoys.shift() || 'Quelque chose que personne ne devrait savoir';
+      t = decoys.shift() || st.L.T.fallbackDecoy;
     }
     opts.push({ text: t, owner: pid });
   }
@@ -264,16 +265,16 @@ function results(st, alive) {
 function label(st, pid) {
   switch (st.type) {
     case 'quiz':
-      return `${correct(st, pid)}/${st.qs.length} bonnes réponses`;
+      return st.L.T.ch.label.quiz(correct(st, pid), st.qs.length);
     case 'memoire':
-      return `${matches(st, pid)}/${st.len} symboles`;
+      return st.L.T.ch.label.memoire(matches(st, pid), st.len);
     case 'reflexes': {
       const { e, f } = eyes(st, pid);
-      return `${e} yeux touchés · ${f} leurre${f > 1 ? 's' : ''}`;
+      return st.L.T.ch.label.reflexes(e, f);
     }
     case 'bluff': {
       const { foundReal, fooled } = bluffStats(st, pid);
-      return `${foundReal ? 'a flairé la vérité' : 'est tombé dans le piège'} · ${fooled} dupé${fooled > 1 ? 's' : ''}`;
+      return st.L.T.ch.label.bluff(foundReal, fooled);
     }
     default:
       return '';
@@ -322,17 +323,17 @@ function screenView(st, alive) {
   const base = { id: st.id, type: st.type, name: st.name, endsAt: st.endsAt };
   switch (st.type) {
     case 'quiz':
-      return { ...base, sub: '3 questions glauques. Le plus juste et le plus rapide l’emporte.', progress: { done: count(st.doneAt), total } };
+      return { ...base, sub: st.L.T.ch.sub.quiz, progress: { done: count(st.doneAt), total } };
     case 'memoire':
-      return { ...base, sub: 'Retenez la séquence qui clignote dans le noir.', progress: { done: count(st.doneAt), total } };
+      return { ...base, sub: st.L.T.ch.sub.memoire, progress: { done: count(st.doneAt), total } };
     case 'reflexes':
-      return { ...base, sub: 'Touchez les yeux qui s’ouvrent. Évitez les araignées.', progress: null };
+      return { ...base, sub: st.L.T.ch.sub.reflexes, progress: null };
     case 'bluff':
       if (st.step === 'write') {
-        return { ...base, step: 'write', prompt: st.prompt.q, sub: 'Inventez une réponse crédible. L’une des options sera la vraie.', progress: { done: count(st.texts), total } };
+        return { ...base, step: 'write', prompt: st.prompt.q, sub: st.L.T.ch.sub.bluffWrite, progress: { done: count(st.texts), total } };
       }
       return {
-        ...base, step: 'pick', prompt: st.prompt.q, sub: 'Laquelle est la vraie ?',
+        ...base, step: 'pick', prompt: st.prompt.q, sub: st.L.T.ch.sub.bluffPick,
         options: st.opts.map((o) => o.text), progress: { done: count(st.picks), total },
       };
     default:
