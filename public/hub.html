@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect x=%2712%27 y=%2714%27 width=%278%27 height=%2716%27 rx=%272%27 fill=%27%23eadfc8%27/%3E%3Cellipse cx=%2716%27 cy=%278%27 rx=%274%27 ry=%276%27 fill=%27%23f5a623%27/%3E%3C/svg%3E">
+  <title>Parent Game Show · 100% Twensa</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Alegreya+Sans:wght@400;500;700&family=Amiri:wght@400;700&family=IM+Fell+English:ital@0;1&family=Noto+Sans+Arabic:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    .hub { position: relative; z-index: 1; max-width: 1180px; margin: 0 auto; padding: 40px 32px 72px; }
+    .masthead { display: grid; grid-template-columns: minmax(220px, 340px) 1fr; gap: 40px; align-items: center; padding-bottom: 28px; border-bottom: 1px solid var(--line); }
+    .logo { appearance: none; background: none; border: 0; padding: 0; cursor: pointer; display: block; width: 100%; -webkit-tap-highlight-color: transparent; border-radius: 24px; }
+    .logo:focus-visible { outline: 3px solid var(--flame); outline-offset: 6px; }
+    .logo svg { width: 100%; height: auto; display: block; overflow: visible; filter: drop-shadow(0 0 28px rgba(240, 179, 90, 0.18)); }
+    .logo .ant { transform-box: fill-box; transform-origin: 50% 100%; transition: transform .35s ease; }
+    .logo:hover .ant.l, .logo:focus-visible .ant.l { transform: rotate(-14deg); }
+    .logo:hover .ant.r, .logo:focus-visible .ant.r { transform: rotate(14deg); }
+    .logo .lid { transform-box: fill-box; transform-origin: 50% 0%; animation: blink 6s infinite; }
+    @keyframes blink { 0%, 94%, 100% { transform: scaleY(0); } 96%, 98% { transform: scaleY(1); } }
+    .logo .static { opacity: 0; transition: opacity .12s; mix-blend-mode: screen; }
+    .logo.zap .static { opacity: .9; }
+    .logo.zap .tv { animation: zap .5s steps(2) 1; }
+    @keyframes zap { 0% { transform: translate(-4px, 2px) skewX(3deg); } 40% { transform: translate(5px, -2px) skewX(-4deg); } 70% { transform: translate(-2px, 0); } 100% { transform: none; } }
+    .logo .pupil { transition: transform .08s linear; }
+    .logo.zap .eye { transform: scale(1.18); }
+    .logo .eye { transform-box: fill-box; transform-origin: center; transition: transform .2s; }
+    .logo .glow { animation: glowpulse 3s ease-in-out infinite alternate; }
+    @keyframes glowpulse { from { opacity: .55; } to { opacity: 1; } }
+    .brand h1 { margin: 0; font-weight: 400; font-size: clamp(44px, 6.4vw, 84px); line-height: .98; color: var(--bone); letter-spacing: .01em; text-shadow: 0 0 40px rgba(194, 53, 74, .45); }
+    .brand h1 em { font-style: normal; color: var(--flame); }
+    .brand .ar { font-family: 'Amiri', serif; direction: rtl; font-size: clamp(30px, 4vw, 48px); line-height: 1.3; color: var(--flame); margin-top: 6px; }
+    .twensa { display: inline-flex; align-items: center; gap: 12px; margin-top: 18px; padding: 8px 20px 8px 10px; background: #e70013; color: #fff; border-radius: 999px; font-family: var(--sans); font-weight: 700; font-size: 20px; letter-spacing: .02em; box-shadow: 0 0 0 2px #0c070b, 0 0 0 4px rgba(231, 0, 19, .55); transform: rotate(-1.5deg); }
+    .twensa svg { width: 42px; height: 42px; flex: none; }
+    .twensa .sep { opacity: .6; font-weight: 400; }
+    .twensa .a { font-family: 'Noto Sans Arabic', sans-serif; direction: rtl; }
+    .hub .lead { margin: 22px 0 0; display: flex; flex-direction: column; gap: 6px; color: var(--bone-dim); font-family: var(--sans); font-size: 19px; }
+    .hub .lead span:last-child { font-family: 'Noto Sans Arabic', sans-serif; direction: rtl; text-align: right; }
+    .games { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr)); gap: 24px; margin-top: 40px; }
+    .card { display: flex; flex-direction: column; gap: 14px; padding: 26px 26px 22px; background: var(--ink-2); border: 1px solid var(--line); border-top: 3px solid var(--accent, var(--flame)); text-decoration: none; color: var(--bone); transition: transform .25s ease, border-color .25s ease; }
+    .card { position: relative; }
+    .card a.main { color: inherit; text-decoration: none; display: block; }
+    .card a.main::after { content: ''; position: absolute; inset: 0; }
+    .card a.main:focus-visible { outline: none; }
+    .card a.main:focus-visible::after { box-shadow: 0 0 0 3px var(--accent, var(--flame)); }
+    .card a.rules { position: relative; z-index: 1; align-self: flex-start; padding: 8px 16px; border: 1px solid var(--accent, var(--flame)); color: var(--accent, var(--flame)); text-decoration: none; font-weight: 700; }
+    .card a.rules:hover, .card a.rules:focus-visible { background: var(--accent, var(--flame)); color: var(--ink); outline: none; }
+    .card:hover, .card:focus-within { transform: translateY(-4px); border-color: var(--accent, var(--flame)); outline: none; }
+    .card .t { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+    .card .t b { font-weight: 400; font-size: 30px; line-height: 1.1; color: var(--accent, var(--flame)); }
+    .card .t i { font-style: normal; font-family: 'Amiri', serif; font-size: 26px; line-height: 1.2; direction: rtl; white-space: nowrap; }
+    .card p { margin: 0; font-family: var(--sans); font-size: 18px; line-height: 1.5; color: var(--bone); }
+    .card p.ar2 { font-family: 'Noto Sans Arabic', sans-serif; direction: rtl; text-align: right; font-size: 18px; line-height: 1.8; color: var(--bone-dim); }
+    .card .meta { margin-top: auto; padding-top: 14px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 12px; font-family: var(--sans); font-size: 17px; color: var(--bone-dim); }
+    .card .meta > span:first-child, .card .meta > span:nth-child(2) { display: block; }
+    .card .go { white-space: nowrap; text-align: center; color: var(--ink); background: var(--accent, var(--flame)); padding: 8px 18px; font-weight: 700; font-family: var(--sans); }
+    .foot { margin-top: 48px; color: var(--bone-dim); font-family: var(--sans); font-size: 17px; display: flex; flex-direction: column; gap: 6px; }
+    .foot span:last-child { font-family: 'Noto Sans Arabic', sans-serif; direction: rtl; text-align: right; }
+    @media (max-width: 760px) { .masthead { grid-template-columns: 1fr; gap: 20px; } .logo { max-width: 260px; margin: 0 auto; } }
+    @media (prefers-reduced-motion: reduce) { .logo .lid, .logo .glow { animation: none; } }
+  </style>
+</head>
+<body>
+  <div class="hub">
+    <header class="masthead">
+      <button class="logo" id="logo" type="button" aria-label="Parent Game Show">
+        <svg viewBox="0 0 360 310" role="img" aria-hidden="true">
+          <defs>
+            <filter id="noise" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="3"><animate attributeName="seed" values="1;5;2;9;4" dur=".4s" repeatCount="indefinite"/></feTurbulence><feColorMatrix values="0 0 0 0 .9  0 0 0 0 .9  0 0 0 0 .9  0 0 0 1.4 -.2"/></filter>
+            <clipPath id="scr"><rect x="52" y="98" width="216" height="156" rx="26"/></clipPath>
+          </defs>
+          <g class="tv">
+            <g class="ant l"><line x1="150" y1="78" x2="104" y2="18" stroke="#eadfc8" stroke-width="5" stroke-linecap="round"/><circle cx="102" cy="15" r="8" fill="#f0b35a"/></g>
+            <g class="ant r"><line x1="210" y1="78" x2="256" y2="18" stroke="#eadfc8" stroke-width="5" stroke-linecap="round"/><circle cx="258" cy="15" r="8" fill="#c2354a"/></g>
+            <rect x="26" y="74" width="308" height="214" rx="40" fill="#1a0f16" stroke="#f0b35a" stroke-width="5"/>
+            <rect x="52" y="98" width="216" height="156" rx="26" fill="#07100f" stroke="#6fc2b4" stroke-width="3"/>
+            <ellipse class="glow" cx="160" cy="176" rx="96" ry="64" fill="#6fc2b4" opacity=".14"/>
+            <g clip-path="url(#scr)">
+              <g class="eye" id="eyeL"><ellipse cx="116" cy="160" rx="31" ry="38" fill="#eadfc8"/><circle class="pupil" id="pL" cx="116" cy="160" r="14" fill="#8e1b2a"/><circle cx="116" cy="160" r="5" fill="#0c070b" class="pupil" id="pL2"/><rect class="lid" x="84" y="120" width="64" height="80" fill="#07100f"/></g>
+              <g class="eye" id="eyeR"><ellipse cx="204" cy="160" rx="31" ry="38" fill="#eadfc8"/><circle class="pupil" id="pR" cx="204" cy="160" r="14" fill="#8e1b2a"/><circle cx="204" cy="160" r="5" fill="#0c070b" class="pupil" id="pR2"/><rect class="lid" x="172" y="120" width="64" height="80" fill="#07100f"/></g>
+              <path d="M104 226 l11 -9 l11 9 l11 -9 l11 9 l11 -9 l11 9 l11 -9 l11 9 l11 -9 l11 9" fill="none" stroke="#c2354a" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+              <rect class="static" x="52" y="98" width="216" height="156" filter="url(#noise)"/>
+            </g>
+            <circle cx="304" cy="140" r="13" fill="#f0b35a"/><circle cx="304" cy="184" r="13" fill="#c2354a"/>
+            <g stroke="#52303d" stroke-width="4" stroke-linecap="round"><line x1="292" y1="222" x2="316" y2="222"/><line x1="292" y1="234" x2="316" y2="234"/><line x1="292" y1="246" x2="316" y2="246"/></g>
+            <rect x="70" y="288" width="34" height="12" rx="4" fill="#f0b35a"/><rect x="256" y="288" width="34" height="12" rx="4" fill="#f0b35a"/>
+          </g>
+        </svg>
+      </button>
+      <div class="brand">
+        <h1>Parent<br><em>Game</em> Show</h1>
+        <div class="ar" lang="ar-TN">عرض ألعاب الرعب</div>
+        <div class="twensa" aria-label="100% Twensa"><svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="19" fill="#fff"/><circle cx="19" cy="20" r="11.5" fill="#e70013"/><circle cx="22.4" cy="20" r="9.2" fill="#fff"/><polygon fill="#e70013" points="23.6,15.3 24.9,18.9 28.6,18.9 25.6,21.1 26.7,24.7 23.6,22.5 20.5,24.7 21.6,21.1 18.6,18.9 22.3,18.9"/></svg><span>100% Twensa</span><span class="sep">·</span><span class="a" lang="ar-TN">100٪ توانسة</span></div>
+      </div>
+    </header>
+    <div class="lead">
+      <span>Jeux de société d’horreur pour 3 à 5 joueurs, en français ou en dialecte tunisien. Un écran pour tous, un téléphone par joueur.</span>
+      <span lang="ar-TN">ألعاب رعب للمجموعة، من 3 حتى 5 لاعبين، بالفرنسية ولا بالتونسي. شاشة وحدة للكل وتليفون لكل لاعب.</span>
+    </div>
+    <main class="games" id="games" aria-live="polite"></main>
+    <div class="foot">
+      <span>Choisis un jeu sur l’écran, puis chacun scanne le QR code. Fait avec le cœur par des Twensa, pour les Twensa.</span>
+      <span lang="ar-TN">اختار لعبة على الشاشة وبعدها كل واحد يسكاني الكيو آر كود. معمولة بالقلب من توانسة، لتوانسة.</span>
+    </div>
+  </div>
+  <script src="/common.js"></script>
+  <script>
+    (async () => {
+      const { esc } = window.UI;
+      const el = document.getElementById('games');
+      let list = [];
+      try { list = await (await fetch('/api/games')).json(); } catch (e) { /* garde la page vide */ }
+      const range = (g) => (g.min === g.max ? g.min : g.min + '–' + g.max);
+      el.innerHTML = list.map((g) =>
+        '<div class="card" style="--accent:' + esc(g.accent) + '">' +
+          '<a class="main" href="/g/' + esc(g.id) + '"><div class="t"><b>' + esc(g.title.fr) + '</b><i lang="ar-TN">' + esc(g.title.aeb) + '</i></div></a>' +
+          '<p>' + esc(g.tagline.fr) + '</p><p class="ar2" lang="ar-TN">' + esc(g.tagline.aeb) + '</p>' +
+          '<div class="meta"><span>' + range(g) + ' joueurs · ' + esc(g.minutes) + ' min</span><span lang="ar-TN" dir="rtl" style="font-family:\'Noto Sans Arabic\',sans-serif"><bdi>' + range(g) + '</bdi> لاعبين · <bdi>' + esc(g.minutes) + '</bdi> دقيقة</span><span class="go">Jouer · العب</span><a class="rules" href="/rules/' + esc(g.id) + '">Règles · القواعد</a></div>' +
+        '</div>').join('');
+
+      // ---- logo interactif : les yeux suivent le doigt/la souris, un clic zappe la télé
+      const logo = document.getElementById('logo');
+      const svg = logo.querySelector('svg');
+      const eyes = [['eyeL', ['pL', 'pL2']], ['eyeR', ['pR', 'pR2']]].map(([id, ps]) => ({ el: document.getElementById(id), ps: ps.map((p) => document.getElementById(p)) }));
+      const look = (x, y) => {
+        for (const e of eyes) {
+          const r = e.el.getBoundingClientRect();
+          const dx = x - (r.left + r.width / 2), dy = y - (r.top + r.height / 2);
+          const d = Math.hypot(dx, dy) || 1, m = Math.min(1, d / 220);
+          const k = 12 * m; // 12 unités SVG au maximum
+          e.ps.forEach((p) => { p.style.transform = 'translate(' + (dx / d * k).toFixed(1) + 'px,' + (dy / d * k).toFixed(1) + 'px)'; });
+        }
+      };
+      addEventListener('pointermove', (ev) => look(ev.clientX, ev.clientY), { passive: true });
+      let actx = null;
+      const blip = () => {
+        try {
+          actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+          const o = actx.createOscillator(), g = actx.createGain();
+          o.type = 'sawtooth'; o.frequency.setValueAtTime(180, actx.currentTime); o.frequency.exponentialRampToValueAtTime(60, actx.currentTime + 0.25);
+          g.gain.setValueAtTime(0.07, actx.currentTime); g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime + 0.3);
+          o.connect(g).connect(actx.destination); o.start(); o.stop(actx.currentTime + 0.32);
+        } catch (e) { /* pas de son */ }
+      };
+      logo.addEventListener('click', () => {
+        logo.classList.remove('zap'); void logo.offsetWidth; logo.classList.add('zap');
+        blip();
+        setTimeout(() => logo.classList.remove('zap'), 650);
+      });
+    })();
+  </script>
+</body>
+</html>

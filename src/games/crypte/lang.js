@@ -1,0 +1,101 @@
+'use strict';
+// Textes de « La Crypte » : français et tunisien (lettres arabes). Pas de voix off en tunisien.
+
+const fr = {
+  code: 'fr', dir: 'ltr', htmlLang: 'fr', speech: 'fr-FR', voice: true, label: 'Français',
+  GLYPHS: [
+    { icon: '🌙', name: 'la lune' }, { icon: '💀', name: 'le crâne' }, { icon: '🕯️', name: 'la bougie' },
+    { icon: '⚰️', name: 'le cercueil' }, { icon: '🗝️', name: 'la clé' }, { icon: '🦇', name: 'la chauve-souris' },
+  ],
+  CLUE: {
+    at: (g, p) => `${g} est en position ${p}.`,
+    notAt: (g, p) => `${g} n’est pas en position ${p}.`,
+    present: (g) => `${g} est dans le code.`,
+    absent: (g) => `${g} n’est pas dans le code.`,
+    before: (a, b) => `${a} se trouve avant ${b}.`,
+    adjacent: (a, b) => `${a} et ${b} sont côte à côte.`,
+    parity: (g, odd) => `${g} est en position ${odd ? 'impaire' : 'paire'}.`,
+  },
+  T: {
+    guest: 'Explorateur',
+    intro: 'Vous descendez dans la crypte. Chaque porte cache un code de 4 symboles. Vous n’avez que des fragments chacun : parlez, comparez, déduisez.',
+    chamber: (n, t) => `Salle ${n} sur ${t}. Les torches vacillent.`,
+    open: 'La porte s’ouvre dans un grincement. Plus profond encore…',
+    wrong: (e, n) => `Faux. ${e} bien placé${e > 1 ? 's' : ''}, ${n} mal placé${n > 1 ? 's' : ''}. Une torche s’éteint.`,
+    timeUp: 'Le temps file. Une torche s’éteint, mais les murs vous soufflent un indice.',
+    win: 'La dernière porte cède. Le jour se lève sur la crypte. Vous êtes sortis vivants.',
+    lose: 'La dernière torche s’éteint. Le noir se referme sur la crypte.',
+    err: {},
+  },
+  ui: {
+    title: 'La<br>Crypte', pageTitle: 'La Crypte',
+    lede: 'Chacun détient des indices différents. Parlez, comparez, trouvez le code avant que les torches ne s’éteignent. On gagne ou on perd ensemble.',
+    startBtn: 'Descendre',
+    howto: 'Chaque salle cache un code de 4 symboles. Les indices sont répartis entre vous : mettez-les en commun à voix haute. Un ouvreur compose le code ; chaque erreur éteint une torche.',
+    introTitle: 'Descente', introSub: 'Lis tes indices sur ton téléphone. Ne les montre pas : dis-les à voix haute.',
+    chamberTitle: 'Salle {n} sur {t}', openerIs: 'Ouvreur : {x}', torches: 'Torches',
+    attempts: 'Essais', noAttempts: 'Aucun essai.', exact: 'bien placés', near: 'mal placés',
+    hintTitle: 'Le mur révèle', hintSlot: 'Position {p}',
+    doorOpen: 'Porte ouverte', codeWas: 'Le code était',
+    winTitle: 'Vous êtes sortis !', loseTitle: 'La crypte vous garde…', torchesLeft: '{n} torche(s) restante(s)',
+    // téléphone
+    yourClues: 'Tes indices', clueHint: 'Seuls, vos indices ne suffisent pas. Dis-les aux autres.',
+    youOpen: 'C’est toi l’ouvreur', youOpenSub: 'Quand le groupe est d’accord, compose le code ici.',
+    notOpener: '{x} compose le code. Aidez-le avec vos indices.',
+    slot: 'Position {p}', clear: 'Effacer', tryCode: 'Tenter le code', pickSymbol: 'Touche les symboles dans l’ordre',
+    understood: 'J’ai compris', waiting: 'En attente des autres…',
+    lastTry: 'Dernier essai', torchLeft: 'Torches : {n}',
+    youWin: 'Vous avez gagné ensemble.', youLose: 'Vous avez perdu ensemble.', replay: 'Rejouer avec les mêmes joueurs',
+    rulesTitle: 'Règles',
+  },
+};
+
+const aeb = {
+  code: 'aeb', dir: 'rtl', htmlLang: 'ar-TN', speech: 'ar-TN', voice: false, label: 'تونسي',
+  GLYPHS: [
+    { icon: '🌙', name: 'الهلال' }, { icon: '💀', name: 'الجمجمة' }, { icon: '🕯️', name: 'الشمعة' },
+    { icon: '⚰️', name: 'التابوت' }, { icon: '🗝️', name: 'المفتاح' }, { icon: '🦇', name: 'الخفّاش' },
+  ],
+  CLUE: {
+    at: (g, p) => `${g} في المكان ${p}.`,
+    notAt: (g, p) => `${g} ماهوش في المكان ${p}.`,
+    present: (g) => `${g} موجود في الكود.`,
+    absent: (g) => `${g} ما هوش في الكود.`,
+    before: (a, b) => `${a} يجي قبل ${b}.`,
+    adjacent: (a, b) => `${a} و${b} جنب بعضهم.`,
+    parity: (g, odd) => `${g} في مكان ${odd ? 'فردي' : 'زوجي'}.`,
+  },
+  T: {
+    guest: 'مغامر',
+    intro: 'تنزلو للسرداب. كل باب يخبّي كود من 4 رموز. كل واحد عندو فتات برك: احكيو، قارنو، واستنتجو.',
+    chamber: (n, t) => `البيت ${n} من ${t}. المشاعل ترتعش.`,
+    open: 'الباب يتحلّ بصرير. ننزلو أعمق…',
+    wrong: (e, n) => `غالط. ${e} في بلاصتهم، ${n} في بلاصة غالطة. شعلة تطفى.`,
+    timeUp: 'الوقت يجري. شعلة تطفى، أما الحيطان تلمّحلكم بدليل.',
+    win: 'الباب الأخير يتحلّ. الصباح طلع على الجبّانة. خرجتو عايشين.',
+    lose: 'آخر شعلة طفات. الظلام سكّر على الجبّانة.',
+    err: {},
+  },
+  ui: {
+    title: 'الجبّانة', pageTitle: 'الجبّانة',
+    lede: 'كل واحد عندو أدلة مختلفة. احكيو، قارنو، والقاو الكود قبل ما المشاعل تطفى. نربحو ولا نخسرو مع بعضنا.',
+    startBtn: 'ننزلو',
+    howto: 'كل بيت يخبّي كود من 4 رموز. الأدلة مقسومة بيناتكم: قولوها بصوت عالي. واحد يركّب الكود، وكل غلطة تطفي شعلة.',
+    introTitle: 'النزول', introSub: 'اقرا أدلتك على تليفونك. ما تورّيهومش: قولهم بصوت عالي.',
+    chamberTitle: 'البيت {n} من {t}', openerIs: 'اللي يفتح: {x}', torches: 'المشاعل',
+    attempts: 'المحاولات', noAttempts: 'ما فماش محاولة.', exact: 'في بلاصتهم', near: 'في بلاصة غالطة',
+    hintTitle: 'الحيط يكشف', hintSlot: 'المكان {p}',
+    doorOpen: 'الباب تحلّ', codeWas: 'الكود كان',
+    winTitle: 'خرجتو!', loseTitle: 'الجبّانة تحبسكم…', torchesLeft: 'بقات {n} مشعل',
+    yourClues: 'أدلتك', clueHint: 'وحدكم الأدلة ما تكفيش. قولو أدلتكم للباقي.',
+    youOpen: 'إنت اللي تفتح', youOpenSub: 'كي المجموعة تتّفق، ركّب الكود هنا.',
+    notOpener: '{x} يركّب الكود. عاونوه بأدلتكم.',
+    slot: 'المكان {p}', clear: 'امسح', tryCode: 'جرّب الكود', pickSymbol: 'المس الرموز بالترتيب',
+    understood: 'فهمت', waiting: 'نستناو في الباقي…',
+    lastTry: 'آخر محاولة', torchLeft: 'المشاعل: {n}',
+    youWin: 'ربحتو مع بعضكم.', youLose: 'خسرتو مع بعضكم.', replay: 'عاودو العبو بنفس اللاعبين',
+    rulesTitle: 'القواعد',
+  },
+};
+
+module.exports = { packs: { fr, aeb } };

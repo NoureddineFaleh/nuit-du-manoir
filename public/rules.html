@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Règles · القواعد — Parent Game Show</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Alegreya+Sans:wght@400;500;700&family=Amiri:wght@400;700&family=IM+Fell+English:ital@0;1&family=Noto+Sans+Arabic:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root { --ink:#0c070b; --ink-2:#170e15; --ink-3:#241823; --flame:#f0b35a; --bone:#eadfc8; --bone-dim:#a99f8b; --line:rgba(234,223,200,.16); --accent:#f0b35a;
+      --serif:'IM Fell English','Palatino Linotype',Georgia,serif; --sans:'Alegreya Sans','Trebuchet MS',system-ui,sans-serif; }
+    * { box-sizing: border-box; }
+    html { background: var(--ink); }
+    body { margin: 0; min-height: 100vh; background: var(--ink); color: var(--bone); font-family: var(--sans); font-size: 20px; line-height: 1.55; }
+    body[dir=rtl] { font-family: 'Noto Sans Arabic', var(--sans); line-height: 1.9; }
+    .wrap { max-width: 860px; margin: 0 auto; padding: 24px 20px 80px; }
+    .bar { display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: center; }
+    .bar a, .seg button { font: inherit; font-weight: 700; color: var(--bone); text-decoration: none; background: none; border: 1px solid var(--line); padding: 8px 16px; cursor: pointer; }
+    .seg { display: inline-flex; } .seg button + button { border-inline-start: 0; }
+    .seg button[aria-pressed=true] { background: var(--accent); color: var(--ink); border-color: var(--accent); }
+    .bar a:hover, .seg button:hover:not([aria-pressed=true]) { border-color: var(--accent); }
+    :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+    .tools { display: flex; flex-wrap: wrap; gap: 12px; }
+    h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(38px, 7vw, 64px); line-height: 1.05; color: var(--accent); margin: 34px 0 8px; }
+    body[dir=rtl] h1 { font-family: 'Amiri', serif; }
+    .intro { color: var(--bone-dim); margin: 0 0 28px; max-width: 62ch; }
+    .quick { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); margin: 0 0 36px; padding: 0; list-style: none; }
+    .quick li { background: var(--ink-2); border: 1px solid var(--line); border-inline-start: 4px solid var(--accent); padding: 14px 18px; }
+    .quick b { display: block; color: var(--accent); }
+    .detail[hidden] { display: none; }
+    .detail h2 { font-family: var(--serif); font-weight: 400; font-size: 30px; color: var(--accent); margin: 40px 0 8px; }
+    body[dir=rtl] .detail h2 { font-family: 'Amiri', serif; }
+    .detail p { margin: 8px 0; max-width: 66ch; }
+    .detail ul { margin: 8px 0; padding-inline-start: 22px; max-width: 66ch; } .detail li { margin: 6px 0; }
+    .ex { margin: 12px 0; padding: 10px 16px; background: var(--ink-3); border-inline-start: 3px solid var(--bone-dim); max-width: 66ch; }
+    .ex::before { content: attr(data-l); font-weight: 700; color: var(--bone-dim); margin-inline-end: 8px; }
+    details { border-bottom: 1px solid var(--line); padding: 10px 0; max-width: 66ch; } summary { cursor: pointer; font-weight: 700; } details p { margin: 6px 0 0; color: var(--bone-dim); }
+    .play { display: inline-block; margin-top: 40px; padding: 14px 28px; background: var(--accent); color: var(--ink); font-weight: 700; text-decoration: none; }
+    @media (max-width: 600px) { body { font-size: 18px; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="bar">
+      <a href="/" id="home">‹ Parent Game Show</a>
+      <div class="tools">
+        <div class="seg" role="group" aria-label="Niveau"><button id="mSimple" aria-pressed="true"></button><button id="mFull" aria-pressed="false"></button></div>
+        <div class="seg" role="group" aria-label="Langue"><button id="lFr" aria-pressed="true">Français</button><button id="lAeb" aria-pressed="false" lang="ar-TN">تونسي</button></div>
+      </div>
+    </div>
+    <main id="out"></main>
+  </div>
+  <script>
+    (() => {
+      const id = location.pathname.split('/').pop();
+      const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+      const L = { fr: { simple: 'En bref', full: 'Tout en détail', ex: 'Exemple :', faq: 'Questions fréquentes', play: 'Jouer à ce jeu', home: '‹ Parent Game Show' },
+                  aeb: { simple: 'باختصار', full: 'كلّ التفاصيل', ex: 'مثال:', faq: 'أسئلة متكرّرة', play: 'العب هالّعبة', home: 'Parent Game Show ›' } };
+      const get = (k, d) => { try { return localStorage.getItem(k) || d; } catch (e) { return d; } };
+      const set = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* sans stockage */ } };
+      let lang = location.hash === '#aeb' ? 'aeb' : get('pgs.rules.lang', 'fr'), mode = get('pgs.rules.mode', 'simple'), data = null, accent = '#f0b35a';
+      const render = () => {
+        const R = data[lang], T = L[lang];
+        document.documentElement.lang = lang === 'aeb' ? 'ar-TN' : 'fr';
+        document.body.dir = lang === 'aeb' ? 'rtl' : 'ltr';
+        document.title = R.title + ' · ' + (lang === 'aeb' ? 'القواعد' : 'Règles');
+        document.documentElement.style.setProperty('--accent', accent);
+        const full = mode === 'full';
+        $('mSimple').textContent = T.simple; $('mFull').textContent = T.full; $('home').textContent = T.home;
+        $('mSimple').setAttribute('aria-pressed', !full); $('mFull').setAttribute('aria-pressed', full);
+        $('lFr').setAttribute('aria-pressed', lang === 'fr'); $('lAeb').setAttribute('aria-pressed', lang === 'aeb');
+        let h = '<h1>' + esc(R.title) + '</h1><p class="intro">' + esc(R.intro) + '</p><ul class="quick">' +
+          R.quick.map((q) => '<li><b>' + esc(q.t) + '</b>' + esc(q.d) + '</li>').join('') + '</ul>';
+        if (full) {
+          h += '<div class="detail">' + R.sections.map((s) => '<section><h2>' + esc(s.h) + '</h2>' + (s.p ? '<p>' + esc(s.p) + '</p>' : '') +
+            (s.list ? '<ul>' + s.list.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul>' : '') +
+            (s.ex ? '<div class="ex" data-l="' + T.ex + '">' + esc(s.ex) + '</div>' : '') + '</section>').join('');
+          if (R.faq && R.faq.length) h += '<h2>' + T.faq + '</h2>' + R.faq.map((f) => '<details><summary>' + esc(f.q) + '</summary><p>' + esc(f.a) + '</p></details>').join('');
+          h += '</div>';
+        }
+        h += '<a class="play" href="/g/' + esc(id) + '">' + T.play + '</a>';
+        $('out').innerHTML = h;
+      };
+      const $ = (i) => document.getElementById(i);
+      $('mSimple').onclick = () => { mode = 'simple'; set('pgs.rules.mode', mode); render(); window.scrollTo(0, 0); };
+      $('mFull').onclick = () => { mode = 'full'; set('pgs.rules.mode', mode); render(); };
+      $('lFr').onclick = () => { lang = 'fr'; set('pgs.rules.lang', lang); render(); };
+      $('lAeb').onclick = () => { lang = 'aeb'; set('pgs.rules.lang', lang); render(); };
+      Promise.all([fetch('/api/rules/' + id).then((r) => r.json()), fetch('/api/games').then((r) => r.json()).catch(() => [])]).then(([d, g]) => {
+        data = d; const m = g.find((x) => x.id === id); if (m) accent = m.accent; render();
+      }).catch(() => { $('out').textContent = '…'; });
+    })();
+  </script>
+</body>
+</html>
